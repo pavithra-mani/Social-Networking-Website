@@ -1,0 +1,37 @@
+import driver from "../config/neo4j.js"
+
+export const createPost = async (req, res) => {
+
+  const { uid, content, imageUrl } = req.body
+  const session = driver.session()
+
+  try {
+
+    const result = await session.run(
+      `
+      CREATE (p:Post {
+        id: randomUUID(),
+        content: $content,
+        imageUrl: $imageUrl,
+        timestamp: datetime()
+      })
+      WITH p
+      MATCH (u:User {uid:$uid})
+      CREATE (u)-[:POSTED]->(p)
+      RETURN p
+      `,
+      { uid, content, imageUrl }
+    )
+
+    res.json(result.records[0].get("p").properties)
+
+  } catch (error) {
+
+    res.status(500).json(error)
+
+  } finally {
+
+    await session.close()
+
+  }
+}
