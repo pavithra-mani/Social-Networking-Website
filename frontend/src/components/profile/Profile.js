@@ -4,6 +4,19 @@ import { signOut } from "firebase/auth";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 
+const PREDEFINED_INTERESTS = [
+  "Photography",
+  "Travel",
+  "Music",
+  "Gaming",
+  "Fitness",
+  "Cooking",
+  "Art",
+  "Technology",
+  "Reading",
+  "Fashion"
+];
+
 const styles = `
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap');
 
@@ -16,7 +29,6 @@ const styles = `
     color: #0a0a0a;
   }
 
-  /* NAV */
   .iris-nav {
     position: fixed;
     top: 0; left: 0; right: 0;
@@ -40,35 +52,27 @@ const styles = `
 
   .iris-nav-logo span { color: #c9a96e; }
 
-  .iris-nav-actions {
-    display: flex;
-    gap: 16px;
-    align-items: center;
-  }
-
-  .nav-icon-btn {
+  .logout-btn {
     background: none;
     border: none;
     cursor: pointer;
-    padding: 6px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: #0a0a0a;
-    transition: background 0.2s;
+    font-family: 'Inter', sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+    color: #737373;
+    padding: 6px 10px;
+    border-radius: 6px;
+    transition: all 0.2s;
   }
 
-  .nav-icon-btn:hover { background: #f0f0f0; }
+  .logout-btn:hover { color: #e74c3c; background: #fff0f0; }
 
-  /* MAIN LAYOUT */
   .profile-main {
     max-width: 935px;
     margin: 0 auto;
     padding: 80px 20px 40px;
   }
 
-  /* PROFILE HEADER */
   .profile-header {
     display: flex;
     align-items: flex-start;
@@ -76,11 +80,6 @@ const styles = `
     padding: 32px 0 40px;
     border-bottom: 1px solid #efefef;
     margin-bottom: 40px;
-  }
-
-  .avatar-wrapper {
-    position: relative;
-    flex-shrink: 0;
   }
 
   .avatar-circle {
@@ -94,7 +93,7 @@ const styles = `
     font-size: 42px;
     font-weight: 300;
     color: white;
-    letter-spacing: -1px;
+    flex-shrink: 0;
   }
 
   .profile-info { flex: 1; }
@@ -111,7 +110,6 @@ const styles = `
     font-size: 24px;
     font-weight: 300;
     color: #0a0a0a;
-    letter-spacing: -0.3px;
   }
 
   .edit-profile-btn {
@@ -128,12 +126,7 @@ const styles = `
   }
 
   .edit-profile-btn:hover { background: #f5f5f5; }
-
-  .edit-profile-btn.active {
-    background: #0a0a0a;
-    color: white;
-    border-color: #0a0a0a;
-  }
+  .edit-profile-btn.active { background: #0a0a0a; color: white; border-color: #0a0a0a; }
 
   .profile-stats {
     display: flex;
@@ -141,38 +134,14 @@ const styles = `
     margin-bottom: 20px;
   }
 
-  .stat-item { text-align: left; }
-
-  .stat-number {
-    font-size: 17px;
-    font-weight: 600;
-    color: #0a0a0a;
-    display: block;
-  }
-
-  .stat-label {
-    font-size: 13px;
-    color: #737373;
-    font-weight: 400;
-  }
+  .stat-number { font-size: 17px; font-weight: 600; display: block; }
+  .stat-label { font-size: 13px; color: #737373; }
 
   .profile-bio-section { margin-bottom: 16px; }
 
-  .profile-bio-text {
-    font-size: 14px;
-    color: #0a0a0a;
-    line-height: 1.6;
-    font-weight: 400;
-    white-space: pre-wrap;
-  }
+  .profile-bio-text { font-size: 14px; line-height: 1.6; }
+  .bio-placeholder { font-size: 14px; color: #aaa; font-style: italic; }
 
-  .bio-placeholder {
-    font-size: 14px;
-    color: #aaa;
-    font-style: italic;
-  }
-
-  /* EDIT BIO */
   .bio-edit-area {
     width: 100%;
     max-width: 400px;
@@ -181,12 +150,9 @@ const styles = `
     border-radius: 8px;
     font-family: 'Inter', sans-serif;
     font-size: 14px;
-    color: #0a0a0a;
     resize: none;
     outline: none;
-    line-height: 1.6;
     transition: border-color 0.2s;
-    background: #fff;
   }
 
   .bio-edit-area:focus { border-color: #0a0a0a; }
@@ -207,11 +173,10 @@ const styles = `
 
   .bio-save-btn:hover { opacity: 0.85; }
 
-  /* INTERESTS */
-  .interests-section { margin-top: 8px; }
+  .interests-section { margin-top: 12px; }
 
   .interests-label {
-    font-size: 12px;
+    font-size: 11px;
     font-weight: 600;
     color: #737373;
     text-transform: uppercase;
@@ -235,66 +200,45 @@ const styles = `
     background: #f0f0f0;
     border-radius: 20px;
     font-size: 13px;
-    font-weight: 400;
     color: #0a0a0a;
-    transition: background 0.2s;
   }
 
-  .interest-tag.editable { background: #fff; border: 1px solid #dbdbdb; }
+  .interests-picker { margin-top: 12px; }
 
-  .remove-tag-btn {
-    background: none;
-    border: none;
-    cursor: pointer;
+  .interests-picker-label {
+    font-size: 11px;
     color: #737373;
-    font-size: 14px;
-    line-height: 1;
-    padding: 0;
-    display: flex;
-    align-items: center;
-    transition: color 0.2s;
+    margin-bottom: 8px;
+    display: block;
   }
 
-  .remove-tag-btn:hover { color: #e74c3c; }
-
-  .add-interest-row {
+  .interests-options {
     display: flex;
+    flex-wrap: wrap;
     gap: 8px;
-    align-items: center;
+  }
+
+  .interest-option {
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-family: 'Inter', sans-serif;
+    font-size: 13px;
+    cursor: pointer;
+    border: 1px solid #dbdbdb;
+    background: white;
+    color: #0a0a0a;
+    transition: all 0.2s;
+  }
+
+  .interest-option:hover { border-color: #0a0a0a; }
+  .interest-option.selected { background: #0a0a0a; color: white; border-color: #0a0a0a; }
+  .interest-option.disabled { opacity: 0.35; cursor: not-allowed; }
+
+  .interests-hint {
+    font-size: 11px;
+    color: #aaa;
     margin-top: 8px;
   }
-
-  .interest-input {
-    padding: 7px 12px;
-    border: 1px solid #dbdbdb;
-    border-radius: 8px;
-    font-family: 'Inter', sans-serif;
-    font-size: 13px;
-    color: #0a0a0a;
-    outline: none;
-    transition: border-color 0.2s;
-    width: 180px;
-  }
-
-  .interest-input:focus { border-color: #0a0a0a; }
-
-  .add-interest-btn {
-    padding: 7px 16px;
-    background: #0a0a0a;
-    color: white;
-    border: none;
-    border-radius: 8px;
-    font-family: 'Inter', sans-serif;
-    font-size: 13px;
-    font-weight: 500;
-    cursor: pointer;
-    transition: opacity 0.2s;
-  }
-
-  .add-interest-btn:hover { opacity: 0.85; }
-
-  /* POSTS GRID */
-  .posts-section {}
 
   .posts-tabs {
     display: flex;
@@ -313,91 +257,19 @@ const styles = `
     color: #737373;
     border-top: 2px solid transparent;
     cursor: pointer;
-    transition: all 0.2s;
   }
 
-  .posts-tab.active {
-    color: #0a0a0a;
-    border-top-color: #0a0a0a;
-  }
-
-  .posts-grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 3px;
-  }
-
-  .post-cell {
-    aspect-ratio: 1;
-    background: #efefef;
-    overflow: hidden;
-    cursor: pointer;
-    position: relative;
-  }
-
-  .post-cell:hover .post-overlay { opacity: 1; }
-
-  .post-overlay {
-    position: absolute;
-    inset: 0;
-    background: rgba(0,0,0,0.3);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    opacity: 0;
-    transition: opacity 0.2s;
-    color: white;
-    font-size: 13px;
-    font-weight: 600;
-    gap: 16px;
-  }
-
-  .post-placeholder {
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(135deg, #f0ede8, #e8e4de);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: #ccc;
-    font-size: 28px;
-  }
+  .posts-tab.active { color: #0a0a0a; border-top-color: #0a0a0a; }
 
   .empty-posts {
-    grid-column: 1 / -1;
     text-align: center;
     padding: 60px 20px;
     color: #737373;
   }
 
-  .empty-posts-icon {
-    font-size: 48px;
-    margin-bottom: 16px;
-    opacity: 0.3;
-  }
+  .empty-posts-icon { font-size: 48px; margin-bottom: 16px; opacity: 0.3; }
+  .empty-posts p { font-size: 14px; }
 
-  .empty-posts p {
-    font-size: 14px;
-    font-weight: 400;
-  }
-
-  /* LOGOUT */
-  .logout-btn {
-    background: none;
-    border: none;
-    cursor: pointer;
-    font-family: 'Inter', sans-serif;
-    font-size: 13px;
-    font-weight: 500;
-    color: #737373;
-    padding: 6px 10px;
-    border-radius: 6px;
-    transition: all 0.2s;
-  }
-
-  .logout-btn:hover { color: #e74c3c; background: #fff0f0; }
-
-  /* LOADING */
   .loading-screen {
     min-height: 100vh;
     display: flex;
@@ -419,7 +291,6 @@ const styles = `
     padding: 10px 24px;
     border-radius: 20px;
     font-size: 13px;
-    font-weight: 400;
     z-index: 999;
     animation: toastIn 0.3s ease;
   }
@@ -435,7 +306,6 @@ function Profile() {
   const [profile, setProfile] = useState(null);
   const [editing, setEditing] = useState(false);
   const [bio, setBio] = useState("");
-  const [newInterest, setNewInterest] = useState("");
   const [toast, setToast] = useState("");
   const navigate = useNavigate();
 
@@ -476,36 +346,32 @@ function Profile() {
     }
   };
 
-  const handleAddInterest = async () => {
-    const trimmed = newInterest.trim();
-    if (!trimmed) return;
-    if (profile.interests?.includes(trimmed)) {
-      showToast("Interest already added");
+  const handleToggleInterest = async (interest) => {
+    const current = profile.interests || [];
+    const isSelected = current.includes(interest);
+
+    if (!isSelected && current.length >= 5) {
+      showToast("Maximum 5 interests allowed");
       return;
     }
-    try {
-      const token = await user.getIdToken();
-      await axios.put("http://localhost:5000/api/profile/interests/add", {
-        uid: user.uid, interest: trimmed
-      }, { headers: { Authorization: `Bearer ${token}` } });
-      setProfile(prev => ({ ...prev, interests: [...(prev.interests || []), trimmed] }));
-      setNewInterest("");
-      showToast("Interest added");
-    } catch (err) {
-      showToast("Failed to add interest");
-    }
-  };
 
-  const handleRemoveInterest = async (interest) => {
     try {
       const token = await user.getIdToken();
-      await axios.put("http://localhost:5000/api/profile/interests/remove", {
-        uid: user.uid, interest
-      }, { headers: { Authorization: `Bearer ${token}` } });
-      setProfile(prev => ({ ...prev, interests: prev.interests.filter(i => i !== interest) }));
-      showToast("Interest removed");
+      if (isSelected) {
+        await axios.put("http://localhost:5000/api/profile/interests/remove", {
+          uid: user.uid, interest
+        }, { headers: { Authorization: `Bearer ${token}` } });
+        setProfile(prev => ({ ...prev, interests: prev.interests.filter(i => i !== interest) }));
+        showToast("Interest removed");
+      } else {
+        await axios.put("http://localhost:5000/api/profile/interests/add", {
+          uid: user.uid, interest
+        }, { headers: { Authorization: `Bearer ${token}` } });
+        setProfile(prev => ({ ...prev, interests: [...prev.interests, interest] }));
+        showToast("Interest added");
+      }
     } catch (err) {
-      showToast("Failed to remove interest");
+      showToast("Failed to update interest");
     }
   };
 
@@ -517,27 +383,21 @@ function Profile() {
   if (!profile) return <div className="loading-screen">Loading...</div>;
 
   const initials = profile.name?.split(" ").map(w => w[0]).join("").toUpperCase().slice(0, 2);
+  const selectedInterests = profile.interests || [];
 
   return (
     <>
       <style>{styles}</style>
       <div className="profile-page">
 
-        {/* NAV */}
         <nav className="iris-nav">
           <span className="iris-nav-logo">Iri<span>s</span></span>
-          <div className="iris-nav-actions">
-            <button className="logout-btn" onClick={handleLogout}>Log out</button>
-          </div>
+          <button className="logout-btn" onClick={handleLogout}>Log out</button>
         </nav>
 
         <div className="profile-main">
-
-          {/* PROFILE HEADER */}
           <div className="profile-header">
-            <div className="avatar-wrapper">
-              <div className="avatar-circle">{initials}</div>
-            </div>
+            <div className="avatar-circle">{initials}</div>
 
             <div className="profile-info">
               <div className="profile-username-row">
@@ -565,7 +425,6 @@ function Profile() {
                 </div>
               </div>
 
-              {/* BIO */}
               <div className="profile-bio-section">
                 {editing ? (
                   <>
@@ -586,52 +445,54 @@ function Profile() {
                 )}
               </div>
 
-              {/* INTERESTS */}
               <div className="interests-section">
                 <span className="interests-label">Interests</span>
-                <div className="interests-tags">
-                  {(profile.interests || []).map((interest, i) => (
-                    <span key={i} className={`interest-tag ${editing ? "editable" : ""}`}>
-                      {interest}
-                      {editing && (
-                        <button className="remove-tag-btn" onClick={() => handleRemoveInterest(interest)}>×</button>
-                      )}
-                    </span>
-                  ))}
-                  {(!profile.interests || profile.interests.length === 0) && !editing && (
-                    <span style={{ fontSize: "13px", color: "#aaa", fontStyle: "italic" }}>No interests added yet</span>
-                  )}
-                </div>
+
+                {!editing && (
+                  <div className="interests-tags">
+                    {selectedInterests.length > 0
+                      ? selectedInterests.map((interest, i) => (
+                          <span key={i} className="interest-tag">{interest}</span>
+                        ))
+                      : <span style={{ fontSize: "13px", color: "#aaa", fontStyle: "italic" }}>No interests added yet</span>
+                    }
+                  </div>
+                )}
+
                 {editing && (
-                  <div className="add-interest-row">
-                    <input
-                      className="interest-input"
-                      type="text"
-                      placeholder="e.g. Photography"
-                      value={newInterest}
-                      onChange={(e) => setNewInterest(e.target.value)}
-                      onKeyDown={(e) => e.key === "Enter" && handleAddInterest()}
-                    />
-                    <button className="add-interest-btn" onClick={handleAddInterest}>Add</button>
+                  <div className="interests-picker">
+                    <span className="interests-picker-label">Select up to 5 interests</span>
+                    <div className="interests-options">
+                      {PREDEFINED_INTERESTS.map((interest) => {
+                        const isSelected = selectedInterests.includes(interest);
+                        const isDisabled = !isSelected && selectedInterests.length >= 5;
+                        return (
+                          <button
+                            key={interest}
+                            className={`interest-option ${isSelected ? "selected" : ""} ${isDisabled ? "disabled" : ""}`}
+                            onClick={() => !isDisabled && handleToggleInterest(interest)}
+                          >
+                            {interest}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    <p className="interests-hint">{selectedInterests.length}/5 selected</p>
                   </div>
                 )}
               </div>
             </div>
           </div>
 
-          {/* POSTS SECTION */}
-          <div className="posts-section">
+          <div>
             <div className="posts-tabs">
               <div className="posts-tab active">Posts</div>
             </div>
-            <div className="posts-grid">
-              <div className="empty-posts">
-                <div className="empty-posts-icon">📷</div>
-                <p>No posts yet</p>
-              </div>
+            <div className="empty-posts">
+              <div className="empty-posts-icon">📷</div>
+              <p>No posts yet</p>
             </div>
           </div>
-
         </div>
 
         {toast && <div className="toast">{toast}</div>}
