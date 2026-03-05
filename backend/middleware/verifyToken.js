@@ -10,7 +10,10 @@ if (!admin.apps.length) {
 const verifyToken = async (req, res, next) => {
   const authHeader = req.headers.authorization;
 
+  console.log("Auth header received:", authHeader ? "yes" : "no");
+
   if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    console.log("No token found in request");
     return res.status(401).json({ error: "No token provided" });
   }
 
@@ -18,9 +21,11 @@ const verifyToken = async (req, res, next) => {
 
   try {
     const decoded = await admin.auth().verifyIdToken(token);
+    console.log("Token verified for uid:", decoded.uid);
     req.user = decoded;
     next();
   } catch (err) {
+    console.log("Token verification failed:", err.message);
     return res.status(401).json({ error: "Invalid token" });
   }
 };
