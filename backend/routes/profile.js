@@ -12,8 +12,19 @@ router.get("/:uid", verifyToken, async (req, res) => {
       `MATCH (u:User {uid: $uid}) RETURN u`,
       { uid }
     );
-    const user = result.records[0].get("u").properties;
-    res.json(user); // interests is already inside user as an array property
+    if (result.records.length === 0) {
+      return res.status(404).json({ error: "User not found in Neo4j" });
+    }
+    const raw = result.records[0].get("u").properties;
+
+    // Convert Neo4j integers to plain JS numbers
+    const user = {
+      ...raw,
+      followers: raw.followers ? raw.followers.low ?? raw.followers : 0,
+      following: raw.following ? raw.following.low ?? raw.following : 0,
+    };
+
+    res.json(user);
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: "Failed to fetch profile" });
@@ -21,6 +32,7 @@ router.get("/:uid", verifyToken, async (req, res) => {
     await session.close();
   }
 });
+
 
 // PUT /api/profile/bio
 router.put("/bio", verifyToken, async (req, res) => {
