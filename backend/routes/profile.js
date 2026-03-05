@@ -1,22 +1,19 @@
 const express = require("express");
 const router = express.Router();
 const driver = require("../neo4j");
+const verifyToken = require("../middleware/verifyToken");
 
 // GET /api/profile/:uid
-// Fetch a user's profile
-router.get("/:uid", async (req, res) => {
+router.get("/:uid", verifyToken, async (req, res) => {
   const { uid } = req.params;
   const session = driver.session();
   try {
     const result = await session.run(
-      `MATCH (u:User {uid: $uid})
-       OPTIONAL MATCH (u)-[:INTERESTED_IN]->(i:Interest)
-       RETURN u, collect(i.name) AS interests`,
+      `MATCH (u:User {uid: $uid}) RETURN u`,
       { uid }
     );
     const user = result.records[0].get("u").properties;
-    const interests = result.records[0].get("interests");
-    res.json({ ...user, interests });
+    res.json(user); // interests is already inside user as an array property
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: "Failed to fetch profile" });
@@ -25,11 +22,9 @@ router.get("/:uid", async (req, res) => {
   }
 });
 
-// PUT /api/profile/:uid/bio
-// Edit bio
-router.put("/:uid/bio", async (req, res) => {
-  const { uid } = req.params;
-  const { bio } = req.body;
+// PUT /api/profile/bio
+router.put("/bio", verifyToken, async (req, res) => {
+  const { uid, bio } = req.body;
   const session = driver.session();
   try {
     await session.run(
@@ -45,23 +40,44 @@ router.put("/:uid/bio", async (req, res) => {
   }
 });
 
-// POST /api/profile/:uid/interests
-// Add an interest
-router.post("/:uid/interests", async (req, res) => {
-  const { uid } = req.params;
-  const { interest } = req.body;
+// PUT /api/profile/interests/add
+router.put("/interests/add", verifyToken, async (req, res) => {
+  const { uid, interest } = req.body;
   const session = driver.session();
   try {
     await session.run(
       `MATCH (u:User {uid: $uid})
-       MERGE (i:Interest {name: $interest})
-       MERGE (u)-[:INTERESTED_IN]->(i)`,
+       SET u.interests = 
+         CASE 
+           WHEN NOT $interest IN u.interests 
+           THEN u.interests + $interest 
+           ELSE u.interests 
+         END`,
       { uid, interest }
     );
     res.json({ message: "Interest added" });
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: "Failed to add interest" });
+  } finally {
+    await session.close();
+  }
+});
+
+// PUT /api/profile/interests/remove
+router.put("/interests/remove", verifyToken, async (req, res) => {
+  const { uid, interest } = req.body;
+  const session = driver.session();
+  try {
+    await session.run(
+      `MATCH (u:User {uid: $uid})
+       SET u.interests = [x IN u.interests WHERE x <> $interest]`,
+      { uid, interest }
+    );
+    res.json({ message: "Interest removed" });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Failed to remove interest" });
   } finally {
     await session.close();
   }
