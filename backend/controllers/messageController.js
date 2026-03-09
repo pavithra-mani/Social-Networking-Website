@@ -43,16 +43,23 @@ exports.getChat = async (req, res) => {
     const result = await session.run(
       `
       MATCH (u1:User {uid:$me})-[:SENT]->(m)-[:TO]->(u2:User {uid:$friend})
-      RETURN m
+      RETURN m.text AS text, m.timestamp AS timestamp, $me AS sender
+
       UNION
+
       MATCH (u2:User {uid:$friend})-[:SENT]->(m)-[:TO]->(u1:User {uid:$me})
-      RETURN m
-      ORDER BY m.timestamp
+      RETURN m.text AS text, m.timestamp AS timestamp, $friend AS sender
+
+      ORDER BY timestamp
       `,
       { me, friend }
     );
 
-    const messages = result.records.map(r => r.get("m").properties);
+    const messages = result.records.map(r => ({
+      text: r.get("text"),
+      timestamp: r.get("timestamp"),
+      sender: r.get("sender")
+    }));
 
     res.json(messages);
   } catch (e) {
