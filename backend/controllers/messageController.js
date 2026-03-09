@@ -2,10 +2,9 @@ const driver = require("../config/neo4j");
 
 exports.sendMessage = async (req, res) => {
   const session = driver.session();
-  const sender = req.user.uid;
-  const { receiver, text } = req.body;
+  const { sender, receiver, text } = req.body;
 
-  if (!receiver || !text) {
+  if (!sender || !receiver || !text) {
     return res.status(400).json({ error: "Missing fields" });
   }
 
@@ -28,6 +27,7 @@ exports.sendMessage = async (req, res) => {
 
     res.status(201).json({ success: true });
   } catch (e) {
+    console.error(e);
     res.status(500).json({ error: "Failed to send message" });
   } finally {
     await session.close();
@@ -36,7 +36,7 @@ exports.sendMessage = async (req, res) => {
 
 exports.getChat = async (req, res) => {
   const session = driver.session();
-  const me = req.user.uid;
+  const { me } = req.query;
   const friend = req.params.friendId;
 
   try {
@@ -56,6 +56,7 @@ exports.getChat = async (req, res) => {
 
     res.json(messages);
   } catch (e) {
+    console.error(e);
     res.status(500).json({ error: "Failed to fetch chat" });
   } finally {
     await session.close();
