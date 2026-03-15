@@ -1,7 +1,36 @@
 import driver from "../config/neo4j.js"
 
+export const followUser = async (req, res) => {
+
+  const { followerUid, followingUid } = req.body
+
+  const session = driver.session()
+
+  try {
+
+    const result = await session.run(
+      `
+      MATCH (a:User {uid:$followerUid}), (b:User {uid:$followingUid})
+      MERGE (a)-[:FOLLOWS]->(b)
+      RETURN a,b
+      `,
+      { followerUid, followingUid }
+    )
+
+    res.status(200).json({
+      message: "User followed successfully"
+    })
+
+  } catch (error) {
+    console.log(error)
+    res.status(500).json(error)
+  }
+
+  await session.close()
+}
+
 export const toggleFollow = async (req, res) => {
-  const { followerId, followingId } = req.body
+  const { followerUId, followingUId } = req.body
 
   const session = driver.session()
 
