@@ -7,15 +7,26 @@ const profileRoutes = require("./routes/profile");
 const messageRoutes = require("./routes/messageRoutes");
 const searchRoutes = require("./routes/searchRoutes");
 
+// NEW routes from feed-follow
+const postRoutes = require("./routes/postRoutes");
+const followRoutes = require("./routes/followRoutes");
+const feedRoutes = require("./routes/feedRoutes");
+
 const app = express();
+
 app.use(cors());
 app.use(express.json());
 
-// Routes
+// Existing routes
 app.use("/api/auth", authRoutes);
 app.use("/api/profile", profileRoutes);
 app.use("/api/messages", messageRoutes);
 app.use("/api/search", searchRoutes);
+
+// Feed-follow routes
+app.use("/api/posts", postRoutes);
+app.use("/api/follow", followRoutes);
+app.use("/api/feed", feedRoutes);
 
 app.get("/", (req, res) => {
   res.send("Backend is running!");
