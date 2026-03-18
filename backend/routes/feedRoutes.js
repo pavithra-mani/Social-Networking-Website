@@ -1,8 +1,8 @@
-import express from "express"
-import { getFeed } from "../controllers/feedController.js"
+const express = require("express");
+const { getFeed } = require("../controllers/feedController");
 
-const router = express.Router()
+const router = express.Router();
 
-router.get("/:uid", getFeed)
+router.get("/:uid", getFeed);
 
-export default router
+module.exports = router;

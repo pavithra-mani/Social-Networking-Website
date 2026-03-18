@@ -6,7 +6,7 @@ const verifyToken = require("../middleware/verifyToken");
 // GET /api/profile/:uid
 router.get("/:uid", verifyToken, async (req, res) => {
   const { uid } = req.params;
-  const session = driver.session();
+  const session = driver.session({ database: "irisdb" });
   try {
     const result = await session.run(
       `MATCH (u:User {uid: $uid}) RETURN u`,
@@ -37,7 +37,7 @@ router.get("/:uid", verifyToken, async (req, res) => {
 // PUT /api/profile/bio
 router.put("/bio", verifyToken, async (req, res) => {
   const { uid, bio } = req.body;
-  const session = driver.session();
+  const session = driver.session({ database: "irisdb" });
   try {
     await session.run(
       `MATCH (u:User {uid: $uid}) SET u.bio = $bio`,
@@ -55,15 +55,16 @@ router.put("/bio", verifyToken, async (req, res) => {
 // PUT /api/profile/interests/add
 router.put("/interests/add", verifyToken, async (req, res) => {
   const { uid, interest } = req.body;
-  const session = driver.session();
+  const session = driver.session({ database: "irisdb" });
   try {
     await session.run(
       `MATCH (u:User {uid: $uid})
-       SET u.interests = 
-         CASE 
-           WHEN NOT $interest IN u.interests 
-           THEN u.interests + $interest 
-           ELSE u.interests 
+       WITH u, coalesce(u.interests, []) AS existing
+       SET u.interests =
+         CASE
+           WHEN $interest IN existing
+           THEN existing
+           ELSE existing + $interest
          END`,
       { uid, interest }
     );
@@ -79,11 +80,14 @@ router.put("/interests/add", verifyToken, async (req, res) => {
 // PUT /api/profile/interests/remove
 router.put("/interests/remove", verifyToken, async (req, res) => {
   const { uid, interest } = req.body;
-  const session = driver.session();
+  const session = driver.session({ database: "irisdb" });
   try {
     await session.run(
       `MATCH (u:User {uid: $uid})
-       SET u.interests = [x IN u.interests WHERE x <> $interest]`,
+       SET u.interests = [
+         x IN coalesce(u.interests, [])
+         WHERE x <> $interest
+       ]`,
       { uid, interest }
     );
     res.json({ message: "Interest removed" });

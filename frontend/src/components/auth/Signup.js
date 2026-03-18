@@ -257,7 +257,7 @@ function Signup() {
       const user = userCredential.user;
       const token = await user.getIdToken();
 
-      await axios.post("http://localhost:5000/api/auth/create-user", {
+      await axios.post("http://localhost:5001/api/auth/register", {
         uid: user.uid,
         name: name,
         email: email

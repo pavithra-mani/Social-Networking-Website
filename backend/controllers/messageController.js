@@ -1,7 +1,7 @@
 const driver = require("../config/neo4j");
 
 exports.sendMessage = async (req, res) => {
-  const session = driver.session();
+  const session = driver.session({ database: "irisdb" });
   const { sender, receiver, text } = req.body;
 
   if (!sender || !receiver || !text) {
@@ -35,7 +35,7 @@ exports.sendMessage = async (req, res) => {
 };
 
 exports.getChat = async (req, res) => {
-  const session = driver.session();
+  const session = driver.session({ database: "irisdb" });
   const { me } = req.query;
   const friend = req.params.friendId;
 

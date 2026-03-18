@@ -1,12 +1,11 @@
-import driver from "../config/neo4j.js"
+const driver = require("../config/neo4j");
 
-export const getFeed = async (req, res) => {
-
-  const { uid } = req.params
-  const session = driver.session()
+// GET FEED
+const getFeed = async (req, res) => {
+  const { uid } = req.params;
+  const session = driver.session({ database: "irisdb" });
 
   try {
-
     const result = await session.run(
       `
       MATCH (u:User {uid:$uid})-[:FOLLOWS]->(f:User)-[:POSTED]->(p:Post)
@@ -14,19 +13,20 @@ export const getFeed = async (req, res) => {
       ORDER BY p.timestamp DESC
       `,
       { uid }
-    )
+    );
 
-    const posts = result.records.map(record => ({
+    const posts = result.records.map((record) => ({
       author: record.get("author"),
-      post: record.get("p").properties
-    }))
+      post: record.get("p").properties,
+    }));
 
-    res.json(posts)
-
+    res.json(posts);
   } catch (error) {
-    console.log(error)
-    res.status(500).json(error)
+    console.error(error);
+    res.status(500).json(error);
+  } finally {
+    await session.close();
   }
+};
 
-  await session.close()
-}
+module.exports = { getFeed };

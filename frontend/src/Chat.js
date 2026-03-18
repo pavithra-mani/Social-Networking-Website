@@ -6,20 +6,22 @@ function Chat() {
   const [text, setText] = useState("");
   const chatEndRef = useRef(null);
 
+  // For now this chat view is wired to two fixed users.
+  // Backend server runs on port 5001 and exposes /api/messages routes.
   const me = "user1";
   const friend = "user2";
 
+  const API_BASE = "http://localhost:5001/api/messages";
+
   const fetchChat = async () => {
-    const res = await axios.get(
-      `http://127.0.0.1:5050/api/messages/chat/${friend}?me=${me}`
-    );
+    const res = await axios.get(`${API_BASE}/chat/${friend}?me=${me}`);
     setMessages(res.data);
   };
 
   const sendMessage = async () => {
     if (!text.trim()) return;
 
-    await axios.post("http://127.0.0.1:5050/api/messages/send", {
+    await axios.post(`${API_BASE}/send`, {
       sender: me,
       receiver: friend,
       text: text,

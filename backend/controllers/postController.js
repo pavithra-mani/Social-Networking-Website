@@ -1,12 +1,11 @@
-import driver from "../config/neo4j.js"
+const driver = require("../config/neo4j");
 
-export const createPost = async (req, res) => {
-
-  const { uid, content, imageUrl } = req.body
-  const session = driver.session()
+// CREATE POST
+const createPost = async (req, res) => {
+  const { uid, content, imageUrl } = req.body;
+  const session = driver.session({ database: "irisdb" });
 
   try {
-
     const result = await session.run(
       `
       CREATE (p:Post {
@@ -21,17 +20,15 @@ export const createPost = async (req, res) => {
       RETURN p
       `,
       { uid, content, imageUrl }
-    )
+    );
 
-    res.json(result.records[0].get("p").properties)
-
+    res.json(result.records[0].get("p").properties);
   } catch (error) {
-
-    res.status(500).json(error)
-
+    console.error(error);
+    res.status(500).json(error);
   } finally {
-
-    await session.close()
-
+    await session.close();
   }
-}
+};
+
+module.exports = { createPost };

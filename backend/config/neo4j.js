@@ -1,12 +1,10 @@
 const neo4j = require("neo4j-driver");
-require("dotenv").config();
 
+// Use the local Neo4j instance that you're viewing in Neo4j Browser,
+// so what the app writes is exactly what you see there.
 const driver = neo4j.driver(
-  process.env.NEO4J_URI || "bolt://localhost:7687",
-  neo4j.auth.basic(
-    process.env.NEO4J_USER || "neo4j",
-    process.env.NEO4J_PASSWORD || "password"
-  )
+  "neo4j://127.0.0.1:7687",
+  neo4j.auth.basic("neo4j", "passwords")
 );
 
 module.exports = driver;

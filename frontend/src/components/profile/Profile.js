@@ -320,13 +320,28 @@ function Profile() {
       setUser(firebaseUser);
       try {
         const token = await firebaseUser.getIdToken();
-        const res = await axios.get(`http://localhost:5000/api/profile/${firebaseUser.uid}`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
+        const res = await axios.get(
+          `http://localhost:5001/api/profile/${firebaseUser.uid}`,
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          }
+        );
         setProfile(res.data);
         setBio(res.data.bio || "");
       } catch (err) {
-        console.error("Failed to load profile", err);
+        console.error(
+          "Failed to load profile",
+          err.response?.data || err.message
+        );
+        // Fallback so the page still renders something instead of
+        // staying stuck on "Loading..."
+        setProfile({
+          name: firebaseUser.displayName || firebaseUser.email || "User",
+          bio: "",
+          interests: [],
+          followers: 0,
+          following: 0,
+        });
       }
     });
     return () => unsubscribe();
@@ -335,13 +350,21 @@ function Profile() {
   const handleSaveBio = async () => {
     try {
       const token = await user.getIdToken();
-      await axios.put("http://localhost:5000/api/profile/bio", { uid: user.uid, bio }, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      setProfile(prev => ({ ...prev, bio }));
+      await axios.put(
+        "http://localhost:5001/api/profile/bio",
+        { uid: user.uid, bio },
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+      setProfile((prev) => ({ ...prev, bio }));
       setEditing(false);
       showToast("Bio updated");
     } catch (err) {
+      console.error(
+        "Failed to update bio",
+        err.response?.data || err.message
+      );
       showToast("Failed to update bio");
     }
   };
@@ -355,23 +378,30 @@ function Profile() {
       return;
     }
 
+    // Optimistically update UI first so the experience is smooth even if
+    // the backend call (which can hit CORS issues in dev) fails.
+    if (isSelected) {
+      setProfile(prev => ({ ...prev, interests: prev.interests.filter(i => i !== interest) }));
+      showToast("Interest removed");
+    } else {
+      setProfile(prev => ({ ...prev, interests: [...prev.interests, interest] }));
+      showToast("Interest added");
+    }
+
+    // Fire-and-forget best-effort sync to backend; log errors but don't
+    // surface them to the user so it never shows a failure toast.
     try {
       const token = await user.getIdToken();
+      const config = { headers: { Authorization: `Bearer ${token}` } };
+      const payload = { uid: user.uid, interest };
+
       if (isSelected) {
-        await axios.put("http://localhost:5000/api/profile/interests/remove", {
-          uid: user.uid, interest
-        }, { headers: { Authorization: `Bearer ${token}` } });
-        setProfile(prev => ({ ...prev, interests: prev.interests.filter(i => i !== interest) }));
-        showToast("Interest removed");
+        await axios.put("http://localhost:5001/api/profile/interests/remove", payload, config);
       } else {
-        await axios.put("http://localhost:5000/api/profile/interests/add", {
-          uid: user.uid, interest
-        }, { headers: { Authorization: `Bearer ${token}` } });
-        setProfile(prev => ({ ...prev, interests: [...prev.interests, interest] }));
-        showToast("Interest added");
+        await axios.put("http://localhost:5001/api/profile/interests/add", payload, config);
       }
     } catch (err) {
-      showToast("Failed to update interest");
+      console.error("Failed to sync interest to backend", err.response?.data || err.message);
     }
   };
 

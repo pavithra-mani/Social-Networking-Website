@@ -1,8 +1,10 @@
 import { useState } from "react"
+import { useNavigate } from "react-router-dom"
 import { FaHome, FaSearch, FaEnvelope, FaBell, FaUser } from "react-icons/fa"
 
 const Navbar = () => {
   const [expanded, setExpanded] = useState(false)
+  const navigate = useNavigate()
 
   return (
     <div
@@ -17,19 +19,19 @@ const Navbar = () => {
         {expanded ? "Iris" : "Iris"}
       </h2>
 
-      <NavItem icon={<FaHome />} label="Home" expanded={expanded} />
+      <NavItem icon={<FaHome />} label="Home" expanded={expanded} onClick={() => navigate("/feed")} />
       <NavItem icon={<FaSearch />} label="Search" expanded={expanded} />
-      <NavItem icon={<FaEnvelope />} label="Messages" expanded={expanded} />
+      <NavItem icon={<FaEnvelope />} label="Messages" expanded={expanded} onClick={() => navigate("/chat")} />
       <NavItem icon={<FaBell />} label="Notifications" expanded={expanded} />
-      <NavItem icon={<FaUser />} label="Profile" expanded={expanded} />
+      <NavItem icon={<FaUser />} label="Profile" expanded={expanded} onClick={() => navigate("/profile")} />
 
     </div>
   )
 }
 
-const NavItem = ({ icon, label, expanded }) => {
+const NavItem = ({ icon, label, expanded, onClick }) => {
   return (
-    <div style={styles.navItem}>
+    <div style={styles.navItem} onClick={onClick}>
       <div style={styles.icon}>{icon}</div>
       {expanded && <span>{label}</span>}
     </div>

@@ -1,5 +1,4 @@
 const express = require("express");
-const cors = require("cors");
 require("dotenv").config();
 
 const authRoutes = require("./routes/auth");
@@ -14,7 +13,18 @@ const feedRoutes = require("./routes/feedRoutes");
 
 const app = express();
 
-app.use(cors());
+const cors = require("cors");
+
+// CORS: allow the React dev server (port 3001) to call this API
+app.use(
+  cors({
+    origin: "http://localhost:3001",
+    credentials: false,
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+  })
+);
+
 app.use(express.json());
 
 // Existing routes
@@ -32,7 +42,25 @@ app.get("/", (req, res) => {
   res.send("Backend is running!");
 });
 
-const PORT = process.env.PORT || 5000;
+app.get("/api/debug/neo4j", async (req, res) => {
+  try {
+    await require("./neo4j").verifyConnectivity();
+    const session = require("./neo4j").session({ database: "irisdb" });
+    try {
+      const result = await session.run(
+        "MATCH (u:User) RETURN count(u) AS users"
+      );
+      const users = result.records[0].get("users").toNumber?.() ?? result.records[0].get("users");
+      res.json({ ok: true, database: "irisdb", users });
+    } finally {
+      await session.close();
+    }
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+const PORT = process.env.PORT || 5001;
 
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);

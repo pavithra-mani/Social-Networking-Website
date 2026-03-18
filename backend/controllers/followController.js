@@ -1,73 +1,71 @@
-import driver from "../config/neo4j.js"
+const driver = require("../config/neo4j");
 
-export const followUser = async (req, res) => {
-
-  const { followerUid, followingUid } = req.body
-
-  const session = driver.session()
+// FOLLOW USER
+const followUser = async (req, res) => {
+  const { followerUid, followingUid } = req.body;
+  const session = driver.session({ database: "irisdb" });
 
   try {
-
-    const result = await session.run(
+    await session.run(
       `
       MATCH (a:User {uid:$followerUid}), (b:User {uid:$followingUid})
       MERGE (a)-[:FOLLOWS]->(b)
-      RETURN a,b
       `,
       { followerUid, followingUid }
-    )
+    );
 
     res.status(200).json({
-      message: "User followed successfully"
-    })
-
+      message: "User followed successfully",
+    });
   } catch (error) {
-    console.log(error)
-    res.status(500).json(error)
+    console.error(error);
+    res.status(500).json(error);
+  } finally {
+    await session.close();
   }
+};
 
-  await session.close()
-}
-
-export const toggleFollow = async (req, res) => {
-  const { followerUId, followingUId } = req.body
-
-  const session = driver.session()
+// TOGGLE FOLLOW (follow/unfollow)
+const toggleFollow = async (req, res) => {
+  const { followerUid, followingUid } = req.body;
+  const session = driver.session();
 
   try {
     const check = await session.run(
       `
-      MATCH (a:User {uid:$followerId})-[r:FOLLOWS]->(b:User {uid:$followingId})
+      MATCH (a:User {uid:$followerUid})-[r:FOLLOWS]->(b:User {uid:$followingUid})
       RETURN r
       `,
-      { followerId, followingId }
-    )
+      { followerUid, followingUid }
+    );
 
     if (check.records.length > 0) {
       await session.run(
         `
-        MATCH (a:User {uid:$followerId})-[r:FOLLOWS]->(b:User {uid:$followingId})
+        MATCH (a:User {uid:$followerUid})-[r:FOLLOWS]->(b:User {uid:$followingUid})
         DELETE r
         `,
-        { followerId, followingId }
-      )
+        { followerUid, followingUid }
+      );
 
-      return res.json({ message: "Unfollowed user" })
+      return res.json({ message: "Unfollowed user" });
     } else {
       await session.run(
         `
-        MATCH (a:User {uid:$followerId}), (b:User {uid:$followingId})
+        MATCH (a:User {uid:$followerUid}), (b:User {uid:$followingUid})
         CREATE (a)-[:FOLLOWS]->(b)
         `,
-        { followerId, followingId }
-      )
+        { followerUid, followingUid }
+      );
 
-      return res.json({ message: "Followed user" })
+      return res.json({ message: "Followed user" });
     }
-
   } catch (error) {
-    res.status(500).json(error)
+    console.error(error);
+    res.status(500).json(error);
   } finally {
-    await session.close()
+    await session.close();
   }
-}
+};
+
+module.exports = { followUser, toggleFollow };
