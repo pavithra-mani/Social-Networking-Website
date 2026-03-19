@@ -1,186 +1,181 @@
-import { useEffect, useState } from "react"
-import { getFeed } from "../services/feedApi"
-import PostCard from "../components/PostCard"
-import CreatePost from "../components/CreatePost"
-import SuggestedUsers from "../components/SuggestedUsers"
+import { useEffect, useState } from "react";
+import { getFeed } from "../services/feedApi";
+import PostCard from "../components/PostCard";
+import CreatePost from "../pages/CreatePost";
+import SuggestedUsers from "../components/SuggestedUsers";
+import { auth } from "../firebaseConfig";
 
 const HomeFeed = () => {
+  const [posts, setPosts] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  const user = auth.currentUser;
+
+  const currentUser = {
+    uid: user?.uid || "",
+    name: user?.displayName || "User",
+    followers: 0
+  };
 
   const suggestedUsers = [
     { uid: "2", name: "Rahul" },
     { uid: "3", name: "Neha" }
-  ]
-
-  const handleSuggestedFollow = (userId) => {
-    setPosts((prev) => {
-      let updatedPosts = prev.map((post) =>
-        post.author.uid === userId
-          ? {
-            ...post,
-            author: {
-              ...post.author,
-              isFollowing: !post.author.isFollowing
-            }
-          }
-          : post
-      )
-
-      // Check if now following
-      const isNowFollowing = updatedPosts.some(
-        (post) =>
-          post.author.uid === userId && post.author.isFollowing
-      )
-
-      if (isNowFollowing) {
-        // Find most recent post of that user
-        const userPosts = updatedPosts.filter(
-          (post) => post.author.uid === userId
-        )
-
-        if (userPosts.length > 0) {
-          const mostRecent = userPosts.sort(
-            (a, b) =>
-              new Date(b.timestamp) - new Date(a.timestamp)
-          )[0]
-
-          // Remove it from current position
-          updatedPosts = updatedPosts.filter(
-            (post) => post.id !== mostRecent.id
-          )
-
-          // Push to bottom
-          updatedPosts.push(mostRecent)
-        }
-      }
-
-      return updatedPosts
-    })
-  }
-
-  const currentUser = {
-    uid: "1",
-    name: "Arunank",
-    followers: 10
-  }
-
-
-  const [posts, setPosts] = useState([])
-
-  const followingCount = posts.filter(
-    (post) => post.author.isFollowing
-  ).length
+  ];
 
   useEffect(() => {
     const loadFeed = async () => {
-      const data = await getFeed()
-      setPosts(data)
-    }
-    loadFeed()
-  }, [])
+      try {
+        const data = await getFeed();
+
+        // SAFETY: ensure structure
+        const safeData = data.map((post) => ({
+          id: post.id,
+          content: post.content || "",
+          imageUrl: post.imageUrl || "",
+          timestamp: post.timestamp || new Date().toISOString(),
+          likeCount: post.likeCount || 0,
+          isLiked: post.isLiked || false,
+          author: {
+            uid: post.author?.uid || "",
+            name: post.author?.name || "Unknown",
+            isFollowing: post.author?.isFollowing || false
+          }
+        }));
+
+        setPosts(safeData);
+      } catch (err) {
+        console.error("Error loading feed:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadFeed();
+  }, []);
 
   const handleCreatePost = (newPost) => {
-    setPosts((prev) => [newPost, ...prev])
-  }
+    setPosts((prev) => [newPost, ...prev]);
+  };
 
   const handleFollowToggle = (postId) => {
-    setPosts((prevPosts) =>
-      prevPosts.map((post) =>
+    setPosts((prev) =>
+      prev.map((post) =>
         post.id === postId
           ? {
-            ...post,
-            author: {
-              ...post.author,
-              isFollowing: !post.author.isFollowing
+              ...post,
+              author: {
+                ...post.author,
+                isFollowing: !post.author.isFollowing
+              }
             }
-          }
           : post
       )
-    )
-  }
+    );
+  };
 
   const handleLikeToggle = (postId) => {
     setPosts((prev) =>
       prev.map((post) =>
         post.id === postId
           ? {
-            ...post,
-            isLiked: !post.isLiked,
-            likeCount: post.isLiked
-              ? post.likeCount - 1
-              : post.likeCount + 1
-          }
+              ...post,
+              isLiked: !post.isLiked,
+              likeCount: post.isLiked
+                ? post.likeCount - 1
+                : post.likeCount + 1
+            }
           : post
       )
-    )
+    );
+  };
+
+  const followingCount = posts.filter(
+    (post) => post.author.isFollowing
+  ).length;
+
+  if (loading) {
+    return <div style={{ color: "#fff", padding: "40px" }}>Loading feed...</div>;
   }
 
-return (
-  <div style={styles.wrapper}>
-    <div style={styles.feed}>
-      <CreatePost onCreate={handleCreatePost} />
+  return (
+    <div style={styles.wrapper}>
+      {/* MAIN FEED */}
+      <div style={styles.feed}>
+        <CreatePost onCreate={handleCreatePost} />
 
-      {posts
-        .filter(
-          (post) =>
-            post.author.uid === currentUser.uid ||
-            post.author.isFollowing
-        )
-        .map((post) => (
-          <PostCard
-            key={post.id}
-            post={post}
-            currentUserId={currentUser.uid}
-            onFollowToggle={handleFollowToggle}
-            onLikeToggle={handleLikeToggle}
-          />
-        ))}
-    </div>
-
-    <div style={styles.rightSidebar}>
-      <div style={styles.profileCard}>
-        <h3>{currentUser.name}</h3>
-        <p style={{ color: "#888" }}>@arunank_05</p>
-        <div style={styles.stats}>
-          <span>Followers: {currentUser.followers}</span>
-          <span>Following: {followingCount}</span>
-        </div>
+        {posts.length === 0 ? (
+          <p style={{ color: "#aaa" }}>No posts yet.</p>
+        ) : (
+          posts.map((post) => (
+            <PostCard
+              key={post.id}
+              post={post}
+              currentUserId={currentUser.uid}
+              onFollowToggle={handleFollowToggle}
+              onLikeToggle={handleLikeToggle}
+            />
+          ))
+        )}
       </div>
 
-      <SuggestedUsers
-        users={suggestedUsers}
-        posts={posts}
-        onToggleFollow={handleSuggestedFollow}
-      />
+      {/* RIGHT SIDEBAR */}
+      <div style={styles.sidebar}>
+        <div style={styles.profileCard}>
+          <h3>{currentUser.name}</h3>
+          <p style={{ color: "#888" }}>@{currentUser.uid.slice(0, 6)}</p>
+
+          <div style={styles.stats}>
+            <span>{currentUser.followers} Followers</span>
+            <span>{followingCount} Following</span>
+          </div>
+        </div>
+
+        <SuggestedUsers
+          users={suggestedUsers}
+          posts={posts}
+          onToggleFollow={(userId) => {
+            setPosts((prev) =>
+              prev.map((post) =>
+                post.author.uid === userId
+                  ? {
+                      ...post,
+                      author: {
+                        ...post.author,
+                        isFollowing: !post.author.isFollowing
+                      }
+                    }
+                  : post
+              )
+            );
+          }}
+        />
+      </div>
     </div>
-  </div>
-)
-
-
-}
+  );
+};
 
 const styles = {
   wrapper: {
-  marginLeft: "270px",
-  display: "flex",
-  justifyContent: "center",
-  gap: "80px",
-  paddingTop: "40px",
-  paddingRight: "40px"
-},
-  feed: {
-    width: "580px"
+    display: "flex",
+    justifyContent: "center",
+    gap: "40px",
+    padding: "40px",
+    background: "#0a0a0a",
+    minHeight: "100vh",
+    color: "#fff"
   },
-  rightSidebar: {
-    width: "320px",
-    position: "sticky",
-    top: "40px",
-    height: "fit-content"
+  feed: {
+    width: "600px"
+  },
+  sidebar: {
+    width: "300px"
   },
   profileCard: {
-    background: "#111",
+    background: "#1c1c1c",
     padding: "20px",
     borderRadius: "12px",
-    marginBottom: "25px"
+    marginBottom: "20px",
+    boxShadow: "0 4px 12px rgba(0,0,0,0.3)"
   },
   stats: {
     display: "flex",
@@ -189,6 +184,6 @@ const styles = {
     color: "#aaa",
     fontSize: "14px"
   }
-}
+};
 
-export default HomeFeed
+export default HomeFeed;

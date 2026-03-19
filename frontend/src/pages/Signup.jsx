@@ -1,6 +1,7 @@
 import React, { useState } from "react";
-import { auth } from "../../firebaseConfig";
-import { signInWithEmailAndPassword } from "firebase/auth";
+import { auth } from "../firebaseConfig";
+import { createUserWithEmailAndPassword } from "firebase/auth";
+import axios from "axios";
 import { useNavigate } from "react-router-dom";
 
 const styles = `
@@ -97,6 +98,7 @@ const styles = `
     justify-content: center;
     background: #f7f5f0;
     position: relative;
+    overflow-y: auto;
   }
 
   .iris-right::before {
@@ -139,9 +141,7 @@ const styles = `
     margin-bottom: 48px;
   }
 
-  .iris-field {
-    margin-bottom: 24px;
-  }
+  .iris-field { margin-bottom: 24px; }
 
   .iris-label {
     display: block;
@@ -167,14 +167,8 @@ const styles = `
     transition: border-color 0.3s ease;
   }
 
-  .iris-input:focus {
-    border-bottom-color: #c9a96e;
-  }
-
-  .iris-input::placeholder {
-    color: #c4bdb4;
-    font-weight: 200;
-  }
+  .iris-input:focus { border-bottom-color: #c9a96e; }
+  .iris-input::placeholder { color: #c4bdb4; font-weight: 200; }
 
   .iris-error {
     font-size: 12px;
@@ -205,10 +199,8 @@ const styles = `
   .iris-btn::after {
     content: '';
     position: absolute;
-    bottom: 0;
-    left: 0;
-    width: 0;
-    height: 2px;
+    bottom: 0; left: 0;
+    width: 0; height: 2px;
     background: #c9a96e;
     transition: width 0.4s ease;
   }
@@ -248,23 +240,37 @@ const styles = `
   }
 `;
 
-function Login() {
+function Signup() {
+  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
-  const handleLogin = async () => {
-    if (!email || !password) return setError("Please fill in all fields.");
+  const handleSignup = async () => {
+    if (!name || !email || !password) return setError("Please fill in all fields.");
     setLoading(true);
     setError("");
     try {
-      await signInWithEmailAndPassword(auth, email, password);
-      navigate("/home");
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      const user = userCredential.user;
+      const token = await user.getIdToken();
+
+      await axios.post("http://localhost:5001/api/auth/register", {
+        uid: user.uid,
+        name: name,
+        email: email
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      navigate("/profile");
     } catch (err) {
       console.log(err);
-      setError("Invalid email or password. Please try again.");
+      setError(err.message.includes("email-already-in-use")
+        ? "This email is already registered."
+        : "Something went wrong. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -282,17 +288,28 @@ function Login() {
             <div className="iris-tagline">Social · Network · Platform</div>
             <div className="iris-divider" />
             <p className="iris-quote">
-              "Where meaningful connections find their natural light."
+              "Begin your journey. Every great connection starts with a single step."
             </p>
           </div>
         </div>
 
         <div className="iris-right">
           <div className="iris-form-container">
-            <h2 className="iris-form-title">Welcome back</h2>
-            <p className="iris-form-subtitle">Sign in to continue</p>
+            <h2 className="iris-form-title">Create account</h2>
+            <p className="iris-form-subtitle">Join Iris today</p>
 
             {error && <p className="iris-error">{error}</p>}
+
+            <div className="iris-field">
+              <label className="iris-label">Full Name</label>
+              <input
+                className="iris-input"
+                type="text"
+                placeholder="Your name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+              />
+            </div>
 
             <div className="iris-field">
               <label className="iris-label">Email Address</label>
@@ -310,18 +327,18 @@ function Login() {
               <input
                 className="iris-input"
                 type="password"
-                placeholder="••••••••"
+                placeholder="Min. 6 characters"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
               />
             </div>
 
-            <button className="iris-btn" onClick={handleLogin} disabled={loading}>
-              {loading ? "Signing in..." : "Sign In"}
+            <button className="iris-btn" onClick={handleSignup} disabled={loading}>
+              {loading ? "Creating account..." : "Create Account"}
             </button>
 
             <p className="iris-footer-link">
-              New to Iris? <a href="/signup">Create an account</a>
+              Already on Iris? <a href="/">Sign in</a>
             </p>
           </div>
           <span className="iris-ornament">Iris © 2026</span>
@@ -331,4 +348,4 @@ function Login() {
   );
 }
 
-export default Login;
+export default Signup;

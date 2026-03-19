@@ -1,21 +1,31 @@
-import Navbar from "./components/Navbar"
-import HomeFeed from "./pages/HomeFeed"
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+
+import Login from "./pages/Login";
+import Signup from "./pages/Signup";
+import Profile from "./pages/Profile";
+import HomeFeed from "./pages/HomeFeed";
+import Chat from "./pages/Chat";
+//import Search from "./pages/Search";
+import CreatePost from "./pages/CreatePost";
+
+import Navbar from "./components/Navbar";
 
 function App() {
   return (
-    <div style={styles.app}>
-      <Navbar />
-      <HomeFeed />
-    </div>
-  )
+    <Router>
+      <Navbar /> {/* visible after login ideally */}
+
+      <Routes>
+        <Route path="/" element={<Login />} />
+        <Route path="/signup" element={<Signup />} />
+        <Route path="/profile" element={<Profile />} />
+        <Route path="/home" element={<HomeFeed />} />
+        <Route path="/chat" element={<Chat />} />
+        {/*<Route path="/search" element={<Search />} /> */}
+        <Route path="/create" element={<CreatePost />} />
+      </Routes>
+    </Router>
+  );
 }
 
-const styles = {
-  app: {
-    backgroundColor: "#000",
-    color: "white",
-    minHeight: "100vh"
-  }
-}
-
-export default App
+export default App;
