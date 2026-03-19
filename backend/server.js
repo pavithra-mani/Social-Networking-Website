@@ -18,7 +18,7 @@ const cors = require("cors");
 // CORS: allow the React dev server (port 3001) to call this API
 app.use(
   cors({
-    origin: "http://localhost:3001",
+    origin: "http://localhost:3000",
     credentials: false,
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],

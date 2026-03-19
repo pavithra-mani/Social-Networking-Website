@@ -267,6 +267,7 @@ function Signup() {
 
       navigate("/profile");
     } catch (err) {
+      console.log(err);
       setError(err.message.includes("email-already-in-use")
         ? "This email is already registered."
         : "Something went wrong. Please try again.");

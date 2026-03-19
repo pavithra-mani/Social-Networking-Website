@@ -263,6 +263,7 @@ function Login() {
       await signInWithEmailAndPassword(auth, email, password);
       navigate("/profile");
     } catch (err) {
+      console.log(err);
       setError("Invalid email or password. Please try again.");
     } finally {
       setLoading(false);
