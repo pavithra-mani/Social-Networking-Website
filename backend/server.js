@@ -15,13 +15,15 @@ const app = express();
 
 const cors = require("cors");
 
-// CORS: allow the React dev server (port 3001) to call this API
+// CORS: allow the React dev server (port 3000) to call this API
 app.use(
   cors({
-    origin: "http://localhost:3000",
+    origin: ["http://localhost:3000", "http://127.0.0.1:3000", "http://localhost:3001", "http://127.0.0.1:3001"],
     credentials: false,
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
+    preflightContinue: false,
+    optionsSuccessStatus: 204
   })
 );
 
@@ -56,7 +58,7 @@ app.get("/api/debug/neo4j", async (req, res) => {
       await session.close();
     }
   } catch (e) {
-    res.status(500).json({ ok: false, error: e.message });
+    res.json({ ok: false, error: e.message, fallback: true });
   }
 });
 

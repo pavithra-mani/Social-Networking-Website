@@ -1,169 +1,395 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
+import { useAuth } from "../contexts/AuthContext";
 import axios from "axios";
+import { useNavigate } from "react-router-dom";
 
-function Chat() {
+const Chat = () => {
+  const { currentUser } = useAuth();
+  const navigate = useNavigate();
+  const [conversations, setConversations] = useState([]);
+  const [selectedChat, setSelectedChat] = useState(null);
   const [messages, setMessages] = useState([]);
-  const [text, setText] = useState("");
-  const chatEndRef = useRef(null);
+  const [newMessage, setNewMessage] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [users, setUsers] = useState([]);
 
-  // For now this chat view is wired to two fixed users.
-  // Backend server runs on port 5001 and exposes /api/messages routes.
-  const me = "user1";
-  const friend = "user2";
+  useEffect(() => {
+    if (currentUser) {
+      loadChatData();
+    } else {
+      navigate("/");
+    }
+  }, [currentUser, navigate]);
 
-  const API_BASE = "http://localhost:5001/api/messages";
+  const loadChatData = async () => {
+    try {
+      // Load users for starting new conversations
+      const usersResponse = await fetch("http://localhost:5001/api/search/users?q=a", {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Origin': 'http://localhost:3000'
+        },
+        mode: 'cors'
+      });
+      
+      if (usersResponse.ok) {
+        const usersData = await usersResponse.json();
+        const filteredUsers = usersData.filter(user => user.uid !== currentUser?.uid);
+        setUsers(filteredUsers);
+        console.log("Users loaded for chat:", filteredUsers);
+      } else {
+        console.error("Failed to load users:", usersResponse.status);
+        // Use mock data if API fails
+        setUsers([
+          { uid: "demo-1", name: "Alice", interests: ["music", "travel"] },
+          { uid: "demo-2", name: "Bob", interests: ["tech", "sports"] },
+          { uid: "demo-3", name: "Carol", interests: ["art", "photography"] }
+        ]);
+      }
 
-  const fetchChat = async () => {
-    const res = await axios.get(`${API_BASE}/chat/${friend}?me=${me}`);
-    setMessages(res.data);
+      // Load conversations (mock data for now)
+      setConversations([
+        {
+          id: "1",
+          user: { uid: "demo-1", name: "Alice" },
+          lastMessage: "Hey, how are you?",
+          timestamp: new Date(Date.now() - 3600000).toISOString()
+        },
+        {
+          id: "2", 
+          user: { uid: "demo-2", name: "Bob" },
+          lastMessage: "See you tomorrow!",
+          timestamp: new Date(Date.now() - 7200000).toISOString()
+        }
+      ]);
+    } catch (error) {
+      console.error("Failed to load chat data:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const startConversation = (user) => {
+    console.log("Starting conversation with user:", user);
+    const newChat = {
+      id: Date.now().toString(),
+      user,
+      lastMessage: "Start a conversation...",
+      timestamp: new Date().toISOString()
+    };
+    setConversations(prev => [newChat, ...prev]);
+    setSelectedChat(newChat);
+    setMessages([]);
+    console.log("New conversation created:", newChat);
   };
 
   const sendMessage = async () => {
-    if (!text.trim()) return;
+    if (!newMessage.trim() || !selectedChat) return;
 
-    await axios.post(`${API_BASE}/send`, {
-      sender: me,
-      receiver: friend,
-      text: text,
-    });
+    const message = {
+      id: Date.now().toString(),
+      text: newMessage,
+      senderId: currentUser.uid,
+      timestamp: new Date().toISOString()
+    };
 
-    setText("");
-    fetchChat();
+    setMessages(prev => [...prev, message]);
+    setNewMessage("");
+
+    // Update conversation
+    setConversations(prev => 
+      prev.map(conv => 
+        conv.id === selectedChat.id 
+          ? { ...conv, lastMessage: newMessage, timestamp: message.timestamp }
+          : conv
+      )
+    );
   };
 
-  useEffect(() => {
-    fetchChat();
-    const interval = setInterval(fetchChat, 2000);
-    return () => clearInterval(interval);
-  }, []);
-
-  useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+  if (loading) {
+    return (
+      <div style={styles.container}>
+        <div style={styles.loading}>Loading conversations...</div>
+      </div>
+    );
+  }
 
   return (
-    <div style={styles.page}>
-      <div style={styles.chatContainer}>
-        <div style={styles.header}>Chat</div>
-
-        <div style={styles.chatBox}>
-          {messages.map((msg, index) => {
-            const isMe = msg.sender === me;
-
-            return (
+    <div style={styles.container}>
+      <div style={styles.chatLayout}>
+        {/* Conversations List */}
+        <div style={styles.conversationsList}>
+          <div style={styles.listHeader}>
+            <h2>Messages</h2>
+          </div>
+          
+          <div style={styles.conversations}>
+            {conversations.map(conversation => (
               <div
-                key={index}
+                key={conversation.id}
                 style={{
-                  ...styles.messageWrapper,
-                  justifyContent: isMe ? "flex-end" : "flex-start",
+                  ...styles.conversationItem,
+                  backgroundColor: selectedChat?.id === conversation.id ? "#2a2a2a" : "transparent"
                 }}
+                onClick={() => setSelectedChat(conversation)}
               >
-                <div
-                  style={{
-                    ...styles.messageBubble,
-                    backgroundColor: isMe ? "#7B2CBF" : "#E0AAFF",
-                    color: isMe ? "white" : "#3C096C",
-                  }}
-                >
-                  {msg.text}
+                <div style={styles.conversationInfo}>
+                  <div style={styles.conversationName}>{conversation.user.name}</div>
+                  <div style={styles.lastMessage}>{conversation.lastMessage}</div>
+                </div>
+                <div style={styles.timestamp}>
+                  {new Date(conversation.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                 </div>
               </div>
-            );
-          })}
-          <div ref={chatEndRef}></div>
+            ))}
+          </div>
+
+          <div style={styles.newChatSection}>
+            <h3 style={styles.sectionTitle}>Start New Chat</h3>
+            <div style={styles.usersList}>
+              {users.slice(0, 5).map(user => (
+                <div
+                  key={user.uid}
+                  style={styles.userItem}
+                >
+                  <div style={styles.userName}>{user.name}</div>
+                  <button style={styles.startChatButton} onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    console.log("Start chat button clicked for:", user);
+                    startConversation(user);
+                  }}>
+                    Chat
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
 
-        <div style={styles.inputArea}>
-          <input
-            style={styles.input}
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            placeholder="Type a message..."
-          />
+        {/* Chat Area */}
+        <div style={styles.chatArea}>
+          {selectedChat ? (
+            <>
+              <div style={styles.chatHeader}>
+                <div style={styles.chatUserInfo}>
+                  <h3>{selectedChat.user.name}</h3>
+                  <p style={styles.chatStatus}>Online</p>
+                </div>
+              </div>
 
-          <button style={styles.button} onClick={sendMessage}>
-            Send
-          </button>
+              <div style={styles.messagesContainer}>
+                {messages.map(message => (
+                  <div
+                    key={message.id}
+                    style={{
+                      ...styles.message,
+                      alignSelf: message.senderId === currentUser.uid ? 'flex-end' : 'flex-start',
+                      backgroundColor: message.senderId === currentUser.uid ? '#3b82f6' : '#2a2a2a'
+                    }}
+                  >
+                    <div style={styles.messageText}>{message.text}</div>
+                    <div style={styles.messageTime}>
+                      {new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div style={styles.messageInput}>
+                <input
+                  type="text"
+                  placeholder="Type a message..."
+                  value={newMessage}
+                  onChange={(e) => setNewMessage(e.target.value)}
+                  onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
+                  style={styles.input}
+                />
+                <button onClick={sendMessage} style={styles.sendButton}>
+                  Send
+                </button>
+              </div>
+            </>
+          ) : (
+            <div style={styles.emptyChat}>
+              <h3>Select a conversation to start messaging</h3>
+              <p>Choose from your existing conversations or start a new one</p>
+            </div>
+          )}
         </div>
       </div>
     </div>
   );
-}
+};
 
 const styles = {
-  page: {
-    backgroundColor: "#F5F0FF",
+  container: {
+    marginLeft: "70px",
     height: "100vh",
-    display: "flex",
-    justifyContent: "center",
-    alignItems: "center",
-    fontFamily: "Segoe UI",
+    backgroundColor: "#0a0a0a",
+    color: "#fff"
   },
-
-  chatContainer: {
-    width: "420px",
-    height: "600px",
-    background: "white",
-    borderRadius: "16px",
-    boxShadow: "0 8px 25px rgba(0,0,0,0.1)",
+  loading: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    height: "100%",
+    fontSize: "18px",
+    color: "#aaa"
+  },
+  chatLayout: {
+    display: "flex",
+    height: "100%"
+  },
+  conversationsList: {
+    width: "350px",
+    borderRight: "1px solid #333",
+    display: "flex",
+    flexDirection: "column"
+  },
+  listHeader: {
+    padding: "20px",
+    borderBottom: "1px solid #333"
+  },
+  conversations: {
+    flex: 1,
+    overflowY: "auto"
+  },
+  conversationItem: {
+    padding: "15px 20px",
+    borderBottom: "1px solid #333",
+    cursor: "pointer",
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    transition: "background-color 0.2s"
+  },
+  conversationInfo: {
+    flex: 1
+  },
+  conversationName: {
+    fontWeight: "500",
+    marginBottom: "5px"
+  },
+  lastMessage: {
+    fontSize: "14px",
+    color: "#aaa",
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+    whiteSpace: "nowrap"
+  },
+  timestamp: {
+    fontSize: "12px",
+    color: "#666"
+  },
+  newChatSection: {
+    padding: "20px",
+    borderTop: "1px solid #333"
+  },
+  sectionTitle: {
+    fontSize: "14px",
+    fontWeight: "500",
+    marginBottom: "10px",
+    color: "#aaa"
+  },
+  usersList: {
     display: "flex",
     flexDirection: "column",
-    overflow: "hidden",
+    gap: "8px"
   },
-
-  header: {
-    background: "#7B2CBF",
-    color: "white",
-    padding: "16px",
-    fontSize: "18px",
-    fontWeight: "bold",
-    textAlign: "center",
+  userItem: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    padding: "8px",
+    borderRadius: "6px",
+    cursor: "pointer"
   },
-
-  chatBox: {
+  userName: {
+    fontSize: "14px"
+  },
+  startChatButton: {
+    padding: "4px 8px",
+    backgroundColor: "#3b82f6",
+    color: "#fff",
+    border: "none",
+    borderRadius: "4px",
+    fontSize: "12px",
+    cursor: "pointer"
+  },
+  chatArea: {
     flex: 1,
-    padding: "15px",
-    overflowY: "auto",
-    background: "#F8F4FF",
-  },
-
-  messageWrapper: {
     display: "flex",
-    marginBottom: "10px",
+    flexDirection: "column"
   },
-
-  messageBubble: {
-    padding: "10px 14px",
-    borderRadius: "20px",
-    maxWidth: "70%",
+  chatHeader: {
+    padding: "20px",
+    borderBottom: "1px solid #333"
+  },
+  chatUserInfo: {
+    display: "flex",
+    flexDirection: "column"
+  },
+  chatStatus: {
     fontSize: "14px",
+    color: "#22c55e",
+    marginTop: "5px"
   },
-
-  inputArea: {
+  messagesContainer: {
+    flex: 1,
+    padding: "20px",
+    overflowY: "auto",
     display: "flex",
-    padding: "12px",
-    borderTop: "1px solid #eee",
-    background: "white",
+    flexDirection: "column",
+    gap: "10px"
   },
-
+  message: {
+    maxWidth: "70%",
+    padding: "12px 16px",
+    borderRadius: "16px",
+    display: "flex",
+    flexDirection: "column"
+  },
+  messageText: {
+    marginBottom: "5px"
+  },
+  messageTime: {
+    fontSize: "12px",
+    opacity: 0.7
+  },
+  messageInput: {
+    padding: "20px",
+    borderTop: "1px solid #333",
+    display: "flex",
+    gap: "10px"
+  },
   input: {
     flex: 1,
-    padding: "10px",
-    borderRadius: "20px",
-    border: "1px solid #ddd",
-    outline: "none",
+    padding: "12px",
+    backgroundColor: "#2a2a2a",
+    border: "1px solid #333",
+    borderRadius: "24px",
+    color: "#fff",
+    fontSize: "16px"
   },
-
-  button: {
-    marginLeft: "10px",
-    padding: "10px 16px",
-    borderRadius: "20px",
+  sendButton: {
+    padding: "12px 24px",
+    backgroundColor: "#3b82f6",
+    color: "#fff",
     border: "none",
-    background: "#7B2CBF",
-    color: "white",
+    borderRadius: "24px",
     cursor: "pointer",
-    fontWeight: "bold",
+    fontWeight: "500"
   },
+  emptyChat: {
+    flex: 1,
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    justifyContent: "center",
+    color: "#666"
+  }
 };
 
 export default Chat;

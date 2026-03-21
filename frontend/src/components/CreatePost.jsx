@@ -1,8 +1,12 @@
 import { useState } from "react"
+import { useAuth } from "../contexts/AuthContext"
+import { createPost } from "../services/postApi"
 
 const CreatePost = ({ onCreate }) => {
   const [content, setContent] = useState("")
   const [image, setImage] = useState(null)
+  const [loading, setLoading] = useState(false)
+  const { currentUser } = useAuth()
 
   const handleImageChange = (e) => {
     const file = e.target.files[0]
@@ -12,47 +16,75 @@ const CreatePost = ({ onCreate }) => {
     }
   }
 
-  const handleSubmit = () => {
-    if (!content.trim() && !image) return
-
-    const newPost = {
-      id: Date.now().toString(),
-      content,
-      imageUrl: image,
-      timestamp: new Date().toISOString(),
-      author: {
-        uid: "1",
-        name: "Arunank",
-        isFollowing: false
-      },
-      likeCount: 0,
-      isLiked: false
+  const handleSubmit = async () => {
+    console.log("CreatePost handleSubmit called", { content, image, currentUser });
+    if (!content.trim() && !image) {
+      console.log("No content or image, returning");
+      return;
+    }
+    if (!currentUser) {
+      console.log("No current user, returning");
+      return;
     }
 
-    onCreate(newPost)
-    setContent("")
-    setImage(null)
+    setLoading(true)
+    try {
+      const postData = {
+        content,
+        imageUrl: image || "",
+        uid: currentUser.uid
+      }
+
+      console.log("Creating post with data:", postData);
+      const newPost = await createPost(postData)
+      console.log("Post created successfully:", newPost);
+      onCreate(newPost)
+      setContent("")
+      setImage(null)
+    } catch (error) {
+      console.error("Failed to create post:", error)
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
-    <div style={styles.container}>
+    <form style={styles.container} onSubmit={(e) => {
+      e.preventDefault();
+      handleSubmit();
+    }}>
       <textarea
         placeholder="Share something..."
         value={content}
         onChange={(e) => setContent(e.target.value)}
         style={styles.textarea}
+        disabled={loading}
       />
 
-      <input type="file" accept="image/*" onChange={handleImageChange} />
+      <input 
+        type="file" 
+        accept="image/*" 
+        onChange={handleImageChange}
+        disabled={loading}
+        style={styles.fileInput}
+      />
 
       {image && (
         <img src={image} alt="preview" style={styles.preview} />
       )}
 
-      <button onClick={handleSubmit} style={styles.button}>
-        Post
+      <button 
+        type="submit"
+        disabled={loading || !content.trim()}
+        style={{
+          ...styles.button,
+          opacity: (loading || !content.trim()) ? 0.6 : 1,
+          cursor: (loading || !content.trim()) ? 'not-allowed' : 'pointer'
+        }}
+      >
+        {loading ? "Posting..." : "Post"}
       </button>
-    </div>
+    </form>
   )
 }
 
@@ -68,10 +100,21 @@ const styles = {
     padding: "10px",
     borderRadius: "6px",
     border: "none",
-    marginBottom: "10px"
+    marginBottom: "10px",
+    backgroundColor: "#2a2a2a",
+    color: "#fff",
+    fontSize: "14px",
+    resize: "vertical",
+    minHeight: "80px"
+  },
+  fileInput: {
+    marginBottom: "10px",
+    color: "#fff"
   },
   preview: {
     width: "100%",
+    maxHeight: "200px",
+    objectFit: "cover",
     marginTop: "10px",
     borderRadius: "8px"
   },
@@ -82,7 +125,9 @@ const styles = {
     border: "none",
     cursor: "pointer",
     background: "#22c55e",
-    color: "white"
+    color: "white",
+    fontSize: "14px",
+    fontWeight: "500"
   }
 }
 

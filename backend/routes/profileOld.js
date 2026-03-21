@@ -71,4 +71,60 @@ router.put("/:uid", async (req, res) => {
   }
 });
 
+// PUT /api/profile/bio (legacy endpoint)
+router.put("/bio", async (req, res) => {
+  const { uid, bio } = req.body;
+  const session = driver.session({ database: "irisdb" });
+  try {
+    await session.run(
+      `MATCH (u:User {uid: $uid}) SET u.bio = $bio`,
+      { uid, bio }
+    );
+    res.json({ message: "Bio updated" });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Failed to update bio" });
+  } finally {
+    await session.close();
+  }
+});
+
+module.exports = router;
+           WHEN $interest IN existing
+           THEN existing
+           ELSE existing + $interest
+         END`,
+      { uid, interest }
+    );
+    res.json({ message: "Interest added" });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Failed to add interest" });
+  } finally {
+    await session.close();
+  }
+});
+
+// PUT /api/profile/interests/remove
+router.put("/interests/remove", verifyToken, async (req, res) => {
+  const { uid, interest } = req.body;
+  const session = driver.session({ database: "irisdb" });
+  try {
+    await session.run(
+      `MATCH (u:User {uid: $uid})
+       SET u.interests = [
+         x IN coalesce(u.interests, [])
+         WHERE x <> $interest
+       ]`,
+      { uid, interest }
+    );
+    res.json({ message: "Interest removed" });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Failed to remove interest" });
+  } finally {
+    await session.close();
+  }
+});
+
 module.exports = router;

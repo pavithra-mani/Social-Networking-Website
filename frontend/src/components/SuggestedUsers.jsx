@@ -7,14 +7,25 @@ const SuggestedUsers = ({ users, posts, onToggleFollow }) => {
 
   return (
     <div style={styles.container}>
-      <h3>Suggested Users</h3>
+      <h3 style={styles.title}>Suggested Users</h3>
 
       {users.map((user) => {
         const followed = isUserFollowed(user.uid)
 
         return (
-          <div key={user.uid} style={styles.row}>
-            <span>{user.name}</span>
+          <div key={user.uid} style={styles.userCard}>
+            <div style={styles.userInfo}>
+              <div style={styles.userName}>{user.name}</div>
+              {user.interests && user.interests.length > 0 && (
+                <div style={styles.interests}>
+                  {user.interests.slice(0, 3).map((interest, i) => (
+                    <span key={i} style={styles.interestTag}>
+                      {interest}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
 
             <button
               style={{
@@ -35,21 +46,54 @@ const SuggestedUsers = ({ users, posts, onToggleFollow }) => {
 const styles = {
   container: {
     background: "#1f1f1f",
-    padding: "15px",
-    borderRadius: "8px",
+    padding: "20px",
+    borderRadius: "12px",
     marginBottom: "20px"
   },
-  row: {
+  title: {
+    color: "#fff",
+    marginBottom: "15px",
+    fontSize: "18px",
+    fontWeight: "500"
+  },
+  userCard: {
     display: "flex",
     justifyContent: "space-between",
-    marginBottom: "10px"
+    alignItems: "flex-start",
+    marginBottom: "12px",
+    padding: "10px 0",
+    borderBottom: "1px solid #333"
+  },
+  userInfo: {
+    flex: 1,
+    marginRight: "10px"
+  },
+  userName: {
+    color: "#fff",
+    fontWeight: "500",
+    marginBottom: "5px"
+  },
+  interests: {
+    display: "flex",
+    gap: "5px",
+    flexWrap: "wrap"
+  },
+  interestTag: {
+    padding: "2px 6px",
+    backgroundColor: "#333",
+    borderRadius: "10px",
+    fontSize: "11px",
+    color: "#aaa"
   },
   button: {
-    padding: "4px 10px",
+    padding: "6px 12px",
     borderRadius: "6px",
     border: "none",
     cursor: "pointer",
-    color: "white"
+    color: "white",
+    fontSize: "12px",
+    fontWeight: "500",
+    transition: "background-color 0.2s"
   }
 }
 

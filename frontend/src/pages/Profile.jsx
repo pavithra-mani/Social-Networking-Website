@@ -1,534 +1,342 @@
 import React, { useState, useEffect } from "react";
-import { auth } from "../firebaseConfig";
-import { signOut } from "firebase/auth";
+import { useAuth } from "../contexts/AuthContext";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 
 const PREDEFINED_INTERESTS = [
-  "Photography",
-  "Travel",
-  "Music",
-  "Gaming",
-  "Fitness",
-  "Cooking",
-  "Art",
-  "Technology",
-  "Reading",
-  "Fashion"
+  "Photography", "Travel", "Music", "Gaming", "Fitness",
+  "Cooking", "Art", "Technology", "Reading", "Fashion",
+  "Sports", "Movies", "Nature", "Writing", "Dancing"
 ];
 
-const styles = `
-  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap');
-
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-
-  .profile-page {
-    min-height: 100vh;
-    background: #fafafa;
-    font-family: 'Inter', sans-serif;
-    color: #0a0a0a;
-  }
-
-  .iris-nav {
-    position: fixed;
-    top: 0; left: 0; right: 0;
-    height: 60px;
-    background: #fff;
-    border-bottom: 1px solid #efefef;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 0 24px;
-    z-index: 100;
-  }
-
-  .iris-nav-logo {
-    font-size: 22px;
-    font-weight: 600;
-    letter-spacing: -0.5px;
-    color: #0a0a0a;
-    font-style: italic;
-  }
-
-  .iris-nav-logo span { color: #c9a96e; }
-
-  .logout-btn {
-    background: none;
-    border: none;
-    cursor: pointer;
-    font-family: 'Inter', sans-serif;
-    font-size: 13px;
-    font-weight: 500;
-    color: #737373;
-    padding: 6px 10px;
-    border-radius: 6px;
-    transition: all 0.2s;
-  }
-
-  .logout-btn:hover { color: #e74c3c; background: #fff0f0; }
-
-  .profile-main {
-    max-width: 935px;
-    margin: 0 auto;
-    padding: 80px 20px 40px;
-  }
-
-  .profile-header {
-    display: flex;
-    align-items: flex-start;
-    gap: 60px;
-    padding: 32px 0 40px;
-    border-bottom: 1px solid #efefef;
-    margin-bottom: 40px;
-  }
-
-  .avatar-circle {
-    width: 120px;
-    height: 120px;
-    border-radius: 50%;
-    background: linear-gradient(135deg, #c9a96e, #e8c98a, #a07840);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 42px;
-    font-weight: 300;
-    color: white;
-    flex-shrink: 0;
-  }
-
-  .profile-info { flex: 1; }
-
-  .profile-username-row {
-    display: flex;
-    align-items: center;
-    gap: 16px;
-    margin-bottom: 20px;
-    flex-wrap: wrap;
-  }
-
-  .profile-username {
-    font-size: 24px;
-    font-weight: 300;
-    color: #0a0a0a;
-  }
-
-  .edit-profile-btn {
-    padding: 7px 18px;
-    background: transparent;
-    border: 1px solid #dbdbdb;
-    border-radius: 8px;
-    font-family: 'Inter', sans-serif;
-    font-size: 13px;
-    font-weight: 500;
-    color: #0a0a0a;
-    cursor: pointer;
-    transition: background 0.2s;
-  }
-
-  .edit-profile-btn:hover { background: #f5f5f5; }
-  .edit-profile-btn.active { background: #0a0a0a; color: white; border-color: #0a0a0a; }
-
-  .profile-stats {
-    display: flex;
-    gap: 36px;
-    margin-bottom: 20px;
-  }
-
-  .stat-number { font-size: 17px; font-weight: 600; display: block; }
-  .stat-label { font-size: 13px; color: #737373; }
-
-  .profile-bio-section { margin-bottom: 16px; }
-
-  .profile-bio-text { font-size: 14px; line-height: 1.6; }
-  .bio-placeholder { font-size: 14px; color: #aaa; font-style: italic; }
-
-  .bio-edit-area {
-    width: 100%;
-    max-width: 400px;
-    padding: 10px 12px;
-    border: 1px solid #dbdbdb;
-    border-radius: 8px;
-    font-family: 'Inter', sans-serif;
-    font-size: 14px;
-    resize: none;
-    outline: none;
-    transition: border-color 0.2s;
-  }
-
-  .bio-edit-area:focus { border-color: #0a0a0a; }
-
-  .bio-save-btn {
-    margin-top: 8px;
-    padding: 7px 20px;
-    background: #0a0a0a;
-    color: white;
-    border: none;
-    border-radius: 8px;
-    font-family: 'Inter', sans-serif;
-    font-size: 13px;
-    font-weight: 500;
-    cursor: pointer;
-    transition: opacity 0.2s;
-  }
-
-  .bio-save-btn:hover { opacity: 0.85; }
-
-  .interests-section { margin-top: 12px; }
-
-  .interests-label {
-    font-size: 11px;
-    font-weight: 600;
-    color: #737373;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-    margin-bottom: 10px;
-    display: block;
-  }
-
-  .interests-tags {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-    margin-bottom: 12px;
-  }
-
-  .interest-tag {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    padding: 5px 12px;
-    background: #f0f0f0;
-    border-radius: 20px;
-    font-size: 13px;
-    color: #0a0a0a;
-  }
-
-  .interests-picker { margin-top: 12px; }
-
-  .interests-picker-label {
-    font-size: 11px;
-    color: #737373;
-    margin-bottom: 8px;
-    display: block;
-  }
-
-  .interests-options {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-  }
-
-  .interest-option {
-    padding: 6px 14px;
-    border-radius: 20px;
-    font-family: 'Inter', sans-serif;
-    font-size: 13px;
-    cursor: pointer;
-    border: 1px solid #dbdbdb;
-    background: white;
-    color: #0a0a0a;
-    transition: all 0.2s;
-  }
-
-  .interest-option:hover { border-color: #0a0a0a; }
-  .interest-option.selected { background: #0a0a0a; color: white; border-color: #0a0a0a; }
-  .interest-option.disabled { opacity: 0.35; cursor: not-allowed; }
-
-  .interests-hint {
-    font-size: 11px;
-    color: #aaa;
-    margin-top: 8px;
-  }
-
-  .posts-tabs {
-    display: flex;
-    border-top: 1px solid #efefef;
-    margin-bottom: 24px;
-  }
-
-  .posts-tab {
-    flex: 1;
-    text-align: center;
-    padding: 14px 0;
-    font-size: 12px;
-    font-weight: 600;
-    letter-spacing: 1px;
-    text-transform: uppercase;
-    color: #737373;
-    border-top: 2px solid transparent;
-    cursor: pointer;
-  }
-
-  .posts-tab.active { color: #0a0a0a; border-top-color: #0a0a0a; }
-
-  .empty-posts {
-    text-align: center;
-    padding: 60px 20px;
-    color: #737373;
-  }
-
-  .empty-posts-icon { font-size: 48px; margin-bottom: 16px; opacity: 0.3; }
-  .empty-posts p { font-size: 14px; }
-
-  .loading-screen {
-    min-height: 100vh;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: #fafafa;
-    font-size: 14px;
-    color: #737373;
-    font-family: 'Inter', sans-serif;
-  }
-
-  .toast {
-    position: fixed;
-    bottom: 30px;
-    left: 50%;
-    transform: translateX(-50%);
-    background: #0a0a0a;
-    color: white;
-    padding: 10px 24px;
-    border-radius: 20px;
-    font-size: 13px;
-    z-index: 999;
-    animation: toastIn 0.3s ease;
-  }
-
-  @keyframes toastIn {
-    from { opacity: 0; transform: translateX(-50%) translateY(10px); }
-    to { opacity: 1; transform: translateX(-50%) translateY(0); }
-  }
-`;
-
-function Profile() {
-  const [user, setUser] = useState(null);
-  const [profile, setProfile] = useState(null);
-  const [editing, setEditing] = useState(false);
-  const [bio, setBio] = useState("");
-  const [toast, setToast] = useState("");
+const Profile = () => {
+  const { currentUser } = useAuth();
   const navigate = useNavigate();
-
-  const showToast = (msg) => {
-    setToast(msg);
-    setTimeout(() => setToast(""), 2500);
-  };
+  const [profile, setProfile] = useState({
+    name: "",
+    bio: "",
+    interests: []
+  });
+  const [editing, setEditing] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    const unsubscribe = auth.onAuthStateChanged(async (firebaseUser) => {
-      if (!firebaseUser) return navigate("/");
-      setUser(firebaseUser);
-      try {
-        const token = await firebaseUser.getIdToken();
-        const res = await axios.get(
-          `http://localhost:5001/api/profile/${firebaseUser.uid}`,
-          {
-            headers: { Authorization: `Bearer ${token}` },
-          }
-        );
-        setProfile(res.data);
-        setBio(res.data.bio || "");
-      } catch (err) {
-        console.error(
-          "Failed to load profile",
-          err.response?.data || err.message
-        );
-        // Fallback so the page still renders something instead of
-        // staying stuck on "Loading..."
-        setProfile({
-          name: firebaseUser.displayName || firebaseUser.email || "User",
-          bio: "",
-          interests: [],
-          followers: 0,
-          following: 0,
-        });
-      }
-    });
-    return () => unsubscribe();
-  }, [navigate]);
-
-  const handleSaveBio = async () => {
-    try {
-      const token = await user.getIdToken();
-      await axios.put(
-        "http://localhost:5001/api/profile/bio",
-        { uid: user.uid, bio },
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
-      setProfile((prev) => ({ ...prev, bio }));
-      setEditing(false);
-      showToast("Bio updated");
-    } catch (err) {
-      console.error(
-        "Failed to update bio",
-        err.response?.data || err.message
-      );
-      showToast("Failed to update bio");
-    }
-  };
-
-  const handleToggleInterest = async (interest) => {
-    const current = profile.interests || [];
-    const isSelected = current.includes(interest);
-
-    if (!isSelected && current.length >= 5) {
-      showToast("Maximum 5 interests allowed");
-      return;
-    }
-
-    // Optimistically update UI first so the experience is smooth even if
-    // the backend call (which can hit CORS issues in dev) fails.
-    if (isSelected) {
-      setProfile(prev => ({ ...prev, interests: prev.interests.filter(i => i !== interest) }));
-      showToast("Interest removed");
+    if (currentUser) {
+      loadProfile();
     } else {
-      setProfile(prev => ({ ...prev, interests: [...prev.interests, interest] }));
-      showToast("Interest added");
+      navigate("/");
     }
+  }, [currentUser, navigate]);
 
-    // Fire-and-forget best-effort sync to backend; log errors but don't
-    // surface them to the user so it never shows a failure toast.
+  const loadProfile = async () => {
     try {
-      const token = await user.getIdToken();
-      const config = { headers: { Authorization: `Bearer ${token}` } };
-      const payload = { uid: user.uid, interest };
-
-      if (isSelected) {
-        await axios.put("http://localhost:5001/api/profile/interests/remove", payload, config);
-      } else {
-        await axios.put("http://localhost:5001/api/profile/interests/add", payload, config);
-      }
-    } catch (err) {
-      console.error("Failed to sync interest to backend", err.response?.data || err.message);
+      // Try to get profile from backend
+      const response = await axios.get(`http://localhost:5001/api/profile/${currentUser.uid}`);
+      setProfile(response.data);
+    } catch (error) {
+      console.log("Profile not found, using defaults");
+      setProfile({
+        name: currentUser.displayName || "User",
+        bio: "",
+        interests: []
+      });
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleLogout = async () => {
-    await signOut(auth);
-    navigate("/");
+  const saveProfile = async () => {
+    console.log("Profile saveProfile called", profile);
+    setSaving(true);
+    try {
+      const response = await axios.put(`http://localhost:5001/api/profile/${currentUser.uid}`, profile);
+      console.log("Profile saved successfully:", response.data);
+      setEditing(false);
+    } catch (error) {
+      console.error("Failed to save profile:", error);
+    } finally {
+      setSaving(false);
+    }
   };
 
-  if (!profile) return <div className="loading-screen">Loading...</div>;
+  const toggleInterest = (interest) => {
+    setProfile(prev => ({
+      ...prev,
+      interests: prev.interests.includes(interest)
+        ? prev.interests.filter(i => i !== interest)
+        : [...prev.interests, interest]
+    }));
+  };
 
-  const initials = profile.name?.split(" ").map(w => w[0]).join("").toUpperCase().slice(0, 2);
-  const selectedInterests = profile.interests || [];
+  if (loading) {
+    return (
+      <div style={styles.container}>
+        <div style={styles.loading}>Loading profile...</div>
+      </div>
+    );
+  }
 
   return (
-    <>
-      <style>{styles}</style>
-      <div className="profile-page">
-
-        <nav className="iris-nav">
-          <span className="iris-nav-logo">Iri<span>s</span></span>
-          <button className="logout-btn" onClick={handleLogout}>Log out</button>
-        </nav>
-
-        <div className="profile-main">
-          <div className="profile-header">
-            <div className="avatar-circle">{initials}</div>
-
-            <div className="profile-info">
-              <div className="profile-username-row">
-                <span className="profile-username">{profile.name}</span>
-                <button
-                  className={`edit-profile-btn ${editing ? "active" : ""}`}
-                  onClick={() => setEditing(!editing)}
-                >
-                  {editing ? "Done" : "Edit profile"}
-                </button>
-              </div>
-
-              <div className="profile-stats">
-                <div className="stat-item">
-                  <span className="stat-number">0</span>
-                  <span className="stat-label">posts</span>
-                </div>
-                <div className="stat-item">
-                  <span className="stat-number">{profile.followers || 0}</span>
-                  <span className="stat-label">followers</span>
-                </div>
-                <div className="stat-item">
-                  <span className="stat-number">{profile.following || 0}</span>
-                  <span className="stat-label">following</span>
-                </div>
-              </div>
-
-              <div className="profile-bio-section">
-                {editing ? (
-                  <>
-                    <textarea
-                      className="bio-edit-area"
-                      rows={3}
-                      value={bio}
-                      onChange={(e) => setBio(e.target.value)}
-                      placeholder="Write something about yourself..."
-                    />
-                    <br />
-                    <button className="bio-save-btn" onClick={handleSaveBio}>Save bio</button>
-                  </>
-                ) : (
-                  profile.bio
-                    ? <p className="profile-bio-text">{profile.bio}</p>
-                    : <p className="bio-placeholder">No bio yet</p>
-                )}
-              </div>
-
-              <div className="interests-section">
-                <span className="interests-label">Interests</span>
-
-                {!editing && (
-                  <div className="interests-tags">
-                    {selectedInterests.length > 0
-                      ? selectedInterests.map((interest, i) => (
-                          <span key={i} className="interest-tag">{interest}</span>
-                        ))
-                      : <span style={{ fontSize: "13px", color: "#aaa", fontStyle: "italic" }}>No interests added yet</span>
-                    }
-                  </div>
-                )}
-
-                {editing && (
-                  <div className="interests-picker">
-                    <span className="interests-picker-label">Select up to 5 interests</span>
-                    <div className="interests-options">
-                      {PREDEFINED_INTERESTS.map((interest) => {
-                        const isSelected = selectedInterests.includes(interest);
-                        const isDisabled = !isSelected && selectedInterests.length >= 5;
-                        return (
-                          <button
-                            key={interest}
-                            className={`interest-option ${isSelected ? "selected" : ""} ${isDisabled ? "disabled" : ""}`}
-                            onClick={() => !isDisabled && handleToggleInterest(interest)}
-                          >
-                            {interest}
-                          </button>
-                        );
-                      })}
-                    </div>
-                    <p className="interests-hint">{selectedInterests.length}/5 selected</p>
-                  </div>
-                )}
-              </div>
-            </div>
+    <div style={styles.container}>
+      <div style={styles.profileCard}>
+        <div style={styles.header}>
+          <div style={styles.avatar}>
+            {currentUser?.displayName?.charAt(0)?.toUpperCase() || "U"}
           </div>
-
-          <div>
-            <div className="posts-tabs">
-              <div className="posts-tab active">Posts</div>
-            </div>
-            <div className="empty-posts">
-              <div className="empty-posts-icon">📷</div>
-              <p>No posts yet</p>
-            </div>
+          <div style={styles.userInfo}>
+            <h1 style={styles.name}>{profile.name}</h1>
+            <p style={styles.email}>{currentUser?.email}</p>
           </div>
+          <button
+            style={styles.editButton}
+            onClick={() => setEditing(!editing)}
+          >
+            {editing ? "Cancel" : "Edit Profile"}
+          </button>
         </div>
 
-        {toast && <div className="toast">{toast}</div>}
+        {editing ? (
+          <form style={styles.editForm} onSubmit={(e) => {
+            e.preventDefault();
+            saveProfile();
+          }}>
+            <div style={styles.formGroup}>
+              <label style={styles.label}>Name</label>
+              <input
+                type="text"
+                value={profile.name}
+                onChange={(e) => setProfile(prev => ({ ...prev, name: e.target.value }))}
+                style={styles.input}
+              />
+            </div>
+            
+            <div style={styles.formGroup}>
+              <label style={styles.label}>Bio</label>
+              <textarea
+                value={profile.bio}
+                onChange={(e) => setProfile(prev => ({ ...prev, bio: e.target.value }))}
+                style={styles.textarea}
+                placeholder="Tell us about yourself..."
+              />
+            </div>
+
+            <div style={styles.formGroup}>
+              <label style={styles.label}>Interests</label>
+              <div style={styles.interestsGrid}>
+                {PREDEFINED_INTERESTS.map(interest => (
+                  <button
+                    key={interest}
+                    type="button"
+                    style={{
+                      ...styles.interestButton,
+                      backgroundColor: profile.interests.includes(interest) ? "#3b82f6" : "#2a2a2a",
+                      color: profile.interests.includes(interest) ? "#fff" : "#aaa"
+                    }}
+                    onClick={() => toggleInterest(interest)}
+                  >
+                    {interest}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <button
+              type="submit"
+              style={styles.saveButton}
+              disabled={saving}
+            >
+              {saving ? "Saving..." : "Save Profile"}
+            </button>
+          </form>
+        ) : (
+          <div style={styles.profileContent}>
+            {profile.bio && (
+              <div style={styles.section}>
+                <h3 style={styles.sectionTitle}>Bio</h3>
+                <p style={styles.bio}>{profile.bio}</p>
+              </div>
+            )}
+
+            {profile.interests.length > 0 && (
+              <div style={styles.section}>
+                <h3 style={styles.sectionTitle}>Interests</h3>
+                <div style={styles.interestsList}>
+                  {profile.interests.map(interest => (
+                    <span key={interest} style={styles.interestTag}>
+                      {interest}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {profile.bio === "" && profile.interests.length === 0 && (
+              <div style={styles.emptyState}>
+                <p>No profile information yet. Click "Edit Profile" to add details.</p>
+              </div>
+            )}
+          </div>
+        )}
       </div>
-    </>
+    </div>
   );
-}
+};
+
+const styles = {
+  container: {
+    marginLeft: "70px",
+    padding: "40px",
+    minHeight: "100vh",
+    backgroundColor: "#0a0a0a"
+  },
+  loading: {
+    color: "#fff",
+    textAlign: "center",
+    fontSize: "18px"
+  },
+  profileCard: {
+    maxWidth: "800px",
+    margin: "0 auto",
+    backgroundColor: "#1a1a1a",
+    borderRadius: "16px",
+    padding: "40px",
+    color: "#fff"
+  },
+  header: {
+    display: "flex",
+    alignItems: "center",
+    marginBottom: "30px",
+    paddingBottom: "20px",
+    borderBottom: "1px solid #333"
+  },
+  avatar: {
+    width: "80px",
+    height: "80px",
+    borderRadius: "50%",
+    backgroundColor: "#3b82f6",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    fontSize: "32px",
+    fontWeight: "600",
+    marginRight: "20px"
+  },
+  userInfo: {
+    flex: 1
+  },
+  name: {
+    fontSize: "28px",
+    fontWeight: "600",
+    marginBottom: "5px"
+  },
+  email: {
+    color: "#aaa",
+    fontSize: "14px"
+  },
+  editButton: {
+    padding: "10px 20px",
+    backgroundColor: "#3b82f6",
+    color: "#fff",
+    border: "none",
+    borderRadius: "8px",
+    cursor: "pointer",
+    fontSize: "14px",
+    fontWeight: "500"
+  },
+  editForm: {
+    display: "flex",
+    flexDirection: "column",
+    gap: "20px"
+  },
+  formGroup: {
+    display: "flex",
+    flexDirection: "column",
+    gap: "8px"
+  },
+  label: {
+    fontSize: "14px",
+    fontWeight: "500",
+    color: "#aaa"
+  },
+  input: {
+    padding: "12px",
+    backgroundColor: "#2a2a2a",
+    border: "1px solid #333",
+    borderRadius: "8px",
+    color: "#fff",
+    fontSize: "16px"
+  },
+  textarea: {
+    padding: "12px",
+    backgroundColor: "#2a2a2a",
+    border: "1px solid #333",
+    borderRadius: "8px",
+    color: "#fff",
+    fontSize: "16px",
+    minHeight: "100px",
+    resize: "vertical"
+  },
+  interestsGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fill, minmax(120px, 1fr))",
+    gap: "8px"
+  },
+  interestButton: {
+    padding: "8px 12px",
+    border: "1px solid #333",
+    borderRadius: "20px",
+    cursor: "pointer",
+    fontSize: "12px",
+    transition: "all 0.2s"
+  },
+  saveButton: {
+    padding: "12px 24px",
+    backgroundColor: "#22c55e",
+    color: "#fff",
+    border: "none",
+    borderRadius: "8px",
+    cursor: "pointer",
+    fontSize: "16px",
+    fontWeight: "500",
+    alignSelf: "flex-start"
+  },
+  profileContent: {
+    display: "flex",
+    flexDirection: "column",
+    gap: "30px"
+  },
+  section: {
+    display: "flex",
+    flexDirection: "column",
+    gap: "10px"
+  },
+  sectionTitle: {
+    fontSize: "18px",
+    fontWeight: "600",
+    color: "#fff"
+  },
+  bio: {
+    color: "#ccc",
+    lineHeight: "1.6"
+  },
+  interestsList: {
+    display: "flex",
+    gap: "8px",
+    flexWrap: "wrap"
+  },
+  interestTag: {
+    padding: "6px 12px",
+    backgroundColor: "#2a2a2a",
+    borderRadius: "20px",
+    fontSize: "14px",
+    color: "#ccc"
+  },
+  emptyState: {
+    textAlign: "center",
+    padding: "40px",
+    color: "#666"
+  }
+};
 
 export default Profile;
