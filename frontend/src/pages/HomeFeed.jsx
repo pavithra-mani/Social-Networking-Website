@@ -51,7 +51,7 @@ const HomeFeed = () => {
       setLoading(true);
       try {
         // Load posts
-        const postsData = await getFeed();
+        const postsData = await getFeed(currentUser.uid);
         const safeData = postsData.map((post) => ({
           id: post.id,
           content: post.content || "",

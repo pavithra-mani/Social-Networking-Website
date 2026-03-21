@@ -1,6 +1,6 @@
 const express = require("express");
 const router = express.Router();
-const db = require("../neo4j");
+const { getFeed } = require("../controllers/feedController");
 
 // Mock data for when Neo4j is not available
 const mockPosts = [
@@ -32,43 +32,13 @@ const mockPosts = [
   }
 ];
 
+// GET /api/feed/:uid - Get personalized feed for a user
+router.get("/:uid", getFeed);
+
+// GET /api/feed - Get all posts (fallback)
 router.get("/", async (req, res) => {
-  const session = db.session({ database: "irisdb" });
-
-  try {
-    const result = await session.run(`
-      MATCH (u:User)-[:POSTED]->(p:Post)
-      RETURN p, u
-      ORDER BY p.timestamp DESC
-    `);
-
-    const posts = result.records.map((record) => {
-      const p = record.get("p").properties;
-      const u = record.get("u").properties;
-
-      return {
-        id: p.id,
-        content: p.content,
-        imageUrl: p.imageUrl || null,
-        likeCount: p.likeCount?.toNumber?.() || 0,
-        timestamp: p.timestamp?.toString(),
-        isLiked: false,
-        author: {
-          uid: u.uid,
-          name: u.name,
-          isFollowing: false
-        }
-      };
-    });
-
-    res.json(posts);
-  } catch (err) {
-    console.error("Neo4j feed error, using mock data:", err);
-    // Fallback to mock data when Neo4j is not available
-    res.json(mockPosts);
-  } finally {
-    await session.close();
-  }
+  console.log("Using fallback feed endpoint");
+  res.json(mockPosts);
 });
 
 module.exports = router;

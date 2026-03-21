@@ -132,4 +132,62 @@ const getFollowerCounts = async (req, res) => {
   }
 };
 
-module.exports = { followUser, toggleFollow, checkFollowStatus, getFollowerCounts };
+// GET FOLLOWERS LIST
+const getFollowersList = async (req, res) => {
+  const { userId } = req.params;
+  const session = driver.session({ database: "irisdb" });
+
+  try {
+    const result = await session.run(
+      `
+      MATCH (follower:User)-[:FOLLOWS]->(u:User {uid:$userId})
+      RETURN follower.uid AS uid, follower.name AS name, follower.email AS email
+      `,
+      { userId }
+    );
+
+    const followers = result.records.map(record => ({
+      uid: record.get("uid"),
+      name: record.get("name"),
+      email: record.get("email")
+    }));
+    
+    res.status(200).json(followers);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json(error);
+  } finally {
+    await session.close();
+  }
+};
+
+// GET FOLLOWING LIST
+const getFollowingList = async (req, res) => {
+  const { userId } = req.params;
+  const session = driver.session({ database: "irisdb" });
+
+  try {
+    const result = await session.run(
+      `
+      MATCH (u:User {uid:$userId})-[:FOLLOWS]->(following:User)
+      RETURN following.uid AS uid, following.name AS name, following.email AS email
+      `,
+      { userId }
+    );
+
+    const following = result.records.map(record => ({
+      uid: record.get("uid"),
+      name: record.get("name"),
+      email: record.get("email")
+    }));
+    
+    res.status(200).json(following);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json(error);
+  } finally {
+    await session.close();
+  }
+};
+
+module.exports = { followUser, toggleFollow, checkFollowStatus, getFollowerCounts, getFollowersList, getFollowingList };

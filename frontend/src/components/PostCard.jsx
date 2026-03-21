@@ -1,10 +1,6 @@
 import FollowButton from "./FollowButton"
 
 const PostCard = ({ post, currentUserId, onFollowToggle, onLikeToggle }) => {
-  const handleToggle = () => {
-    onFollowToggle(post.id)
-  }
-
   const handleLikeToggle = () => {
     onLikeToggle(post.id)
   }
@@ -15,8 +11,8 @@ const PostCard = ({ post, currentUserId, onFollowToggle, onLikeToggle }) => {
         <h3 style={{ margin: 0 }}>{post.author.name}</h3>
         {post.author.uid !== currentUserId && (
           <FollowButton
-            isFollowing={post.author.isFollowing}
-            onToggle={handleToggle}
+            targetUserId={post.author.uid}
+            currentUserId={currentUserId}
           />
         )}
       </div>

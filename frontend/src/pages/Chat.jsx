@@ -5,13 +5,15 @@ import { useNavigate } from "react-router-dom";
 
 const Chat = () => {
   const { currentUser } = useAuth();
-  const navigate = useNavigate();
+  const [users, setUsers] = useState([]);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [filteredUsers, setFilteredUsers] = useState([]);
   const [conversations, setConversations] = useState([]);
   const [selectedChat, setSelectedChat] = useState(null);
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState("");
   const [loading, setLoading] = useState(true);
-  const [users, setUsers] = useState([]);
+  const navigate = useNavigate();
 
   useEffect(() => {
     if (currentUser) {
@@ -21,8 +23,45 @@ const Chat = () => {
     }
   }, [currentUser, navigate]);
 
+  // Filter users based on search term
+  useEffect(() => {
+    const filtered = users.filter(user => 
+      user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (user.interests && user.interests.some(interest => 
+        interest.toLowerCase().includes(searchTerm.toLowerCase())
+      ))
+    );
+    setFilteredUsers(filtered);
+  }, [searchTerm, users]);
+
   const loadChatData = async () => {
     try {
+      // Load all conversations for the current user
+      const conversationsResponse = await fetch(`/api/messages/conversations/${currentUser.uid}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (conversationsResponse.ok) {
+        const conversationsData = await conversationsResponse.json();
+        console.log("Conversations loaded:", conversationsData);
+        
+        // Format conversations for the UI
+        const formattedConversations = conversationsData.map(conv => ({
+          id: conv.uid,
+          user: { uid: conv.uid, name: conv.name },
+          lastMessage: conv.lastMessage || "No messages yet",
+          timestamp: conv.timestamp
+        }));
+        
+        setConversations(formattedConversations);
+      } else {
+        console.error("Failed to load conversations:", conversationsResponse.status);
+        setConversations([]);
+      }
+
       // Load users for starting new conversations
       const usersResponse = await fetch("/api/search/users?q=a", {
         method: 'GET',
@@ -35,34 +74,18 @@ const Chat = () => {
         const usersData = await usersResponse.json();
         const filteredUsers = usersData.filter(user => user.uid !== currentUser?.uid);
         setUsers(filteredUsers);
+        setFilteredUsers(filteredUsers);
         console.log("Users loaded for chat:", filteredUsers);
       } else {
         console.error("Failed to load users:", usersResponse.status);
-        // Use mock data if API fails
-        setUsers([
-          { uid: "demo-1", name: "Alice", interests: ["music", "travel"] },
-          { uid: "demo-2", name: "Bob", interests: ["tech", "sports"] },
-          { uid: "demo-3", name: "Carol", interests: ["art", "photography"] }
-        ]);
+        setUsers([]);
+        setFilteredUsers([]);
       }
-
-      // Load conversations (mock data for now)
-      setConversations([
-        {
-          id: "1",
-          user: { uid: "demo-1", name: "Alice" },
-          lastMessage: "Hey, how are you?",
-          timestamp: new Date(Date.now() - 3600000).toISOString()
-        },
-        {
-          id: "2", 
-          user: { uid: "demo-2", name: "Bob" },
-          lastMessage: "See you tomorrow!",
-          timestamp: new Date(Date.now() - 7200000).toISOString()
-        }
-      ]);
     } catch (error) {
       console.error("Failed to load chat data:", error);
+      setConversations([]);
+      setUsers([]);
+      setFilteredUsers([]);
     } finally {
       setLoading(false);
     }
@@ -207,13 +230,31 @@ const Chat = () => {
 
           <div style={styles.newChatSection}>
             <h3 style={styles.sectionTitle}>Start New Chat</h3>
+            <input
+              type="text"
+              placeholder="Search users by name or interests..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              style={styles.searchInput}
+            />
             <div style={styles.usersList}>
-              {users.slice(0, 5).map(user => (
+              {filteredUsers.slice(0, 10).map(user => (
                 <div
                   key={user.uid}
                   style={styles.userItem}
                 >
-                  <div style={styles.userName}>{user.name}</div>
+                  <div style={styles.userInfo}>
+                    <div style={styles.userName}>{user.name}</div>
+                    {user.interests && user.interests.length > 0 && (
+                      <div style={styles.userInterests}>
+                        {user.interests.slice(0, 2).map((interest, i) => (
+                          <span key={i} style={styles.interestTag}>
+                            {interest}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                   <button style={styles.startChatButton} onClick={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
@@ -224,6 +265,11 @@ const Chat = () => {
                   </button>
                 </div>
               ))}
+              {filteredUsers.length === 0 && searchTerm && (
+                <div style={styles.noUsersFound}>
+                  No users found matching "{searchTerm}"
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -367,6 +413,38 @@ const styles = {
     cursor: "pointer"
   },
   userName: {
+    fontSize: "14px"
+  },
+  userInfo: {
+    flex: 1,
+    marginRight: "10px"
+  },
+  userInterests: {
+    display: "flex",
+    gap: "4px",
+    marginTop: "4px"
+  },
+  interestTag: {
+    padding: "2px 6px",
+    backgroundColor: "#333",
+    borderRadius: "10px",
+    fontSize: "10px",
+    color: "#aaa"
+  },
+  searchInput: {
+    width: "100%",
+    padding: "10px",
+    border: "1px solid #333",
+    borderRadius: "6px",
+    backgroundColor: "#1a1a1a",
+    color: "#fff",
+    fontSize: "14px",
+    marginBottom: "10px"
+  },
+  noUsersFound: {
+    padding: "20px",
+    textAlign: "center",
+    color: "#666",
     fontSize: "14px"
   },
   startChatButton: {

@@ -91,3 +91,59 @@ exports.getChat = async (req, res) => {
     await session.close();
   }
 };
+
+// GET ALL CONVERSATIONS FOR A USER
+exports.getAllConversations = async (req, res) => {
+  const session = driver.session({ database: "irisdb" });
+  const { userId } = req.params;
+
+  try {
+    // Get all conversations where the user is either sender or receiver
+    const result = await session.run(
+      `
+      MATCH (u:User {uid:$userId})
+      OPTIONAL MATCH (u)-[:SENT]->(m)-[:TO]->(other:User)
+      OPTIONAL MATCH (other:User)-[:SENT]->(m)-[:TO]->(u)
+      WITH other, m
+      ORDER BY m.timestamp DESC
+      WITH other, collect(m)[0] AS lastMessage
+      WHERE lastMessage IS NOT NULL
+      RETURN DISTINCT other.uid AS uid, other.name AS name, lastMessage.text AS lastMessage, lastMessage.timestamp AS timestamp
+      `,
+      { userId }
+    );
+
+    const conversations = result.records.map(record => {
+      const timestamp = record.get("timestamp");
+      const isoTimestamp = timestamp ? new Date(
+        timestamp.year.low,
+        timestamp.month.low - 1,
+        timestamp.day.low,
+        timestamp.hour.low,
+        timestamp.minute.low,
+        timestamp.second.low,
+        timestamp.nanosecond.low / 1000000
+      ).toISOString() : new Date().toISOString();
+
+      return {
+        uid: record.get("uid"),
+        name: record.get("name"),
+        lastMessage: record.get("lastMessage"),
+        timestamp: isoTimestamp
+      };
+    });
+
+    res.json(conversations);
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: "Failed to fetch conversations" });
+  } finally {
+    await session.close();
+  }
+};
+
+module.exports = {
+  sendMessage: exports.sendMessage,
+  getChat: exports.getChat,
+  getAllConversations: exports.getAllConversations
+};

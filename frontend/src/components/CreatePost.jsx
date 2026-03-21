@@ -9,12 +9,18 @@ const CreatePost = ({ onCreate }) => {
   const { currentUser } = useAuth()
 
   const handleImageChange = (e) => {
-    const file = e.target.files[0]
+    const file = e.target.files[0];
     if (file) {
-      const imageUrl = URL.createObjectURL(file)
-      setImage(imageUrl)
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        // Convert to base64 string for storage
+        const result = reader.result;
+        console.log("Image converted to base64:", result.substring(0, 50) + "...");
+        setImage(result);
+      };
+      reader.readAsDataURL(file);
     }
-  }
+  };
 
   const handleSubmit = async () => {
     console.log("CreatePost handleSubmit called", { content, image, currentUser });

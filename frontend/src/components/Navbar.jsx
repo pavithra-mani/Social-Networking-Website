@@ -29,7 +29,7 @@ const Navbar = () => {
       <NavItem icon={<FaBell />} label="Notifications" expanded={expanded} />
       <NavItem icon={<FaUser />} label="Profile" expanded={expanded} onClick={() => navigate("/profile")} />
       
-      <div style={{ marginTop: "auto" }}>
+      <div style={{ marginTop: "20px" }}>
         <NavItem icon={<FaSignOutAlt />} label="Logout" expanded={expanded} onClick={handleLogout} />
       </div>
 

@@ -20,6 +20,10 @@ const Profile = () => {
   const [editing, setEditing] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [followers, setFollowers] = useState([]);
+  const [following, setFollowing] = useState([]);
+  const [showFollowers, setShowFollowers] = useState(false);
+  const [showFollowing, setShowFollowing] = useState(false);
 
   useEffect(() => {
     if (currentUser) {
@@ -52,8 +56,42 @@ const Profile = () => {
         bio: "",
         interests: []
       });
-    } finally {
-      setLoading(false);
+    }
+
+    // Load followers and following lists
+    await loadFollowersAndFollowing();
+    setLoading(false);
+  };
+
+  const loadFollowersAndFollowing = async () => {
+    try {
+      // Load followers
+      const followersResponse = await fetch(`/api/follow/followers/${currentUser.uid}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (followersResponse.ok) {
+        const followersData = await followersResponse.json();
+        setFollowers(followersData);
+      }
+
+      // Load following
+      const followingResponse = await fetch(`/api/follow/following/${currentUser.uid}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (followingResponse.ok) {
+        const followingData = await followingResponse.json();
+        setFollowing(followingData);
+      }
+    } catch (error) {
+      console.error("Error loading followers/following:", error);
     }
   };
 

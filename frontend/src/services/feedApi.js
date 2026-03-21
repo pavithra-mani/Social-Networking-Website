@@ -2,9 +2,9 @@ import axios from "axios";
 
 const API = "/api";
 
-export const getFeed = async () => {
+export const getFeed = async (userId) => {
   try {
-    const res = await fetch(`${API}/feed`, {
+    const res = await fetch(`${API}/feed/${userId}`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json'
