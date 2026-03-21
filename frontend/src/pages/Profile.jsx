@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
+import FollowButton from "../components/FollowButton";
 
 const PREDEFINED_INTERESTS = [
   "Photography", "Travel", "Music", "Gaming", "Fitness",
@@ -232,6 +233,72 @@ const Profile = () => {
               </div>
             )}
 
+            {/* Followers Section */}
+            <div style={styles.section}>
+              <div style={styles.sectionHeader}>
+                <h3 style={styles.sectionTitle}>Followers ({followers.length})</h3>
+                <button 
+                  style={styles.toggleButton}
+                  onClick={() => setShowFollowers(!showFollowers)}
+                >
+                  {showFollowers ? 'Hide' : 'Show'}
+                </button>
+              </div>
+              {showFollowers && (
+                <div style={styles.usersList}>
+                  {followers.length > 0 ? (
+                    followers.map(user => (
+                      <div key={user.uid} style={styles.userItem}>
+                        <div style={styles.userInfo}>
+                          <div style={styles.userName}>{user.name}</div>
+                          <div style={styles.userEmail}>{user.email}</div>
+                        </div>
+                        <FollowButton
+                          targetUserId={user.uid}
+                          currentUserId={currentUser.uid}
+                        />
+                      </div>
+                    ))
+                  ) : (
+                    <div style={styles.emptyState}>No followers yet</div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Following Section */}
+            <div style={styles.section}>
+              <div style={styles.sectionHeader}>
+                <h3 style={styles.sectionTitle}>Following ({following.length})</h3>
+                <button 
+                  style={styles.toggleButton}
+                  onClick={() => setShowFollowing(!showFollowing)}
+                >
+                  {showFollowing ? 'Hide' : 'Show'}
+                </button>
+              </div>
+              {showFollowing && (
+                <div style={styles.usersList}>
+                  {following.length > 0 ? (
+                    following.map(user => (
+                      <div key={user.uid} style={styles.userItem}>
+                        <div style={styles.userInfo}>
+                          <div style={styles.userName}>{user.name}</div>
+                          <div style={styles.userEmail}>{user.email}</div>
+                        </div>
+                        <FollowButton
+                          targetUserId={user.uid}
+                          currentUserId={currentUser.uid}
+                        />
+                      </div>
+                    ))
+                  ) : (
+                    <div style={styles.emptyState}>Not following anyone yet</div>
+                  )}
+                </div>
+              )}
+            </div>
+
             {profile.bio === "" && profile.interests.length === 0 && (
               <div style={styles.emptyState}>
                 <p>No profile information yet. Click "Edit Profile" to add details.</p>
@@ -397,6 +464,46 @@ const styles = {
     textAlign: "center",
     padding: "40px",
     color: "#666"
+  },
+  sectionHeader: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: "10px"
+  },
+  toggleButton: {
+    padding: "6px 12px",
+    backgroundColor: "#3b82f6",
+    color: "#fff",
+    border: "none",
+    borderRadius: "6px",
+    cursor: "pointer",
+    fontSize: "12px",
+    fontWeight: "500"
+  },
+  usersList: {
+    display: "flex",
+    flexDirection: "column",
+    gap: "10px"
+  },
+  userItem: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    padding: "12px",
+    backgroundColor: "#2a2a2a",
+    borderRadius: "8px",
+    border: "1px solid #333"
+  },
+  userName: {
+    fontSize: "16px",
+    fontWeight: "500",
+    color: "#fff",
+    marginBottom: "2px"
+  },
+  userEmail: {
+    fontSize: "14px",
+    color: "#aaa"
   }
 };
 
