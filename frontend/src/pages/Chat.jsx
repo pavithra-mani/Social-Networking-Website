@@ -24,13 +24,11 @@ const Chat = () => {
   const loadChatData = async () => {
     try {
       // Load users for starting new conversations
-      const usersResponse = await fetch("http://localhost:5001/api/search/users?q=a", {
+      const usersResponse = await fetch("/api/search/users?q=a", {
         method: 'GET',
         headers: {
-          'Content-Type': 'application/json',
-          'Origin': 'http://localhost:3000'
-        },
-        mode: 'cors'
+          'Content-Type': 'application/json'
+        }
       });
       
       if (usersResponse.ok) {
@@ -70,8 +68,10 @@ const Chat = () => {
     }
   };
 
-  const startConversation = (user) => {
+  const startConversation = async (user) => {
     console.log("Starting conversation with user:", user);
+    
+    // Create conversation locally first
     const newChat = {
       id: Date.now().toString(),
       user,
@@ -81,7 +81,42 @@ const Chat = () => {
     setConversations(prev => [newChat, ...prev]);
     setSelectedChat(newChat);
     setMessages([]);
-    console.log("New conversation created:", newChat);
+    
+    // Try to load existing chat history from backend
+    try {
+      const response = await fetch(`/api/messages/chat/${user.uid}?me=${currentUser.uid}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (response.ok) {
+        const chatHistory = await response.json();
+        console.log("Loaded chat history:", chatHistory);
+        if (chatHistory.length > 0) {
+          // Format messages from backend to match frontend structure
+          const formattedMessages = chatHistory.map((msg, index) => ({
+            id: msg.id || `backend-${index}-${Date.now()}`,
+            text: msg.text,
+            senderId: msg.sender,
+            timestamp: msg.timestamp ? new Date(msg.timestamp).toISOString() : new Date().toISOString()
+          }));
+          setMessages(formattedMessages);
+          // Update last message in conversation
+          const lastMsg = formattedMessages[formattedMessages.length - 1];
+          setConversations(prev => 
+            prev.map(conv => 
+              conv.id === newChat.id 
+                ? { ...conv, lastMessage: lastMsg.text, timestamp: lastMsg.timestamp }
+                : conv
+            )
+          );
+        }
+      }
+    } catch (error) {
+      console.error("Failed to load chat history:", error);
+    }
   };
 
   const sendMessage = async () => {
@@ -94,10 +129,11 @@ const Chat = () => {
       timestamp: new Date().toISOString()
     };
 
+    // Add message to local state immediately
     setMessages(prev => [...prev, message]);
     setNewMessage("");
 
-    // Update conversation
+    // Update conversation's last message
     setConversations(prev => 
       prev.map(conv => 
         conv.id === selectedChat.id 
@@ -105,6 +141,30 @@ const Chat = () => {
           : conv
       )
     );
+
+    // Send message to backend
+    try {
+      const response = await fetch('/api/messages/send', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          sender: currentUser.uid,
+          receiver: selectedChat.user.uid,
+          text: newMessage
+        })
+      });
+      
+      if (response.ok) {
+        const result = await response.json();
+        console.log("Message sent successfully:", result);
+      } else {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+    } catch (error) {
+      console.error("Failed to send message:", error);
+    }
   };
 
   if (loading) {

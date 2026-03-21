@@ -40,6 +40,22 @@ app.use("/api/posts", postRoutes);
 app.use("/api/follow", followRoutes);
 app.use("/api/feed", feedRoutes);
 
+app.get("/api/debug/follows", async (req, res) => {
+  try {
+    const session = require("./config/neo4j").session({ database: "irisdb" });
+    const result = await session.run("MATCH (a:User)-[r:FOLLOWS]->(b:User) RETURN a.uid, b.uid, r");
+    const follows = result.records.map(record => ({
+      follower: record.get("a.uid"),
+      following: record.get("b.uid"),
+      relationship: record.get("r")
+    }));
+    await session.close();
+    res.json({ follows });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 app.get("/", (req, res) => {
   res.send("Backend is running!");
 });

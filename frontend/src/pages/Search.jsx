@@ -25,10 +25,19 @@ const Search = () => {
     setLoading(true);
     try {
       const endpoint = searchType === 'users' ? '/api/search/users' : '/api/search/interests';
-      const response = await axios.get(`http://localhost:5001${endpoint}`, {
-        params: { q: searchTerm }
+      const response = await fetch(`${endpoint}?q=${encodeURIComponent(searchTerm)}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json'
+        }
       });
-      setResults(response.data);
+      
+      if (response.ok) {
+        const data = await response.json();
+        setResults(data);
+      } else {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
     } catch (error) {
       console.error('Search error:', error);
       setResults([]);
@@ -109,10 +118,14 @@ const styles = {
     marginLeft: '70px',
     padding: '20px',
     maxWidth: '800px',
-    margin: '0 auto'
+    margin: '0 auto',
+    minHeight: '100vh',
+    backgroundColor: '#0a0a0a',
+    color: '#fff'
   },
   searchHeader: {
-    marginBottom: '30px'
+    marginBottom: '30px',
+    color: '#fff'
   },
   searchControls: {
     display: 'flex',
@@ -145,7 +158,8 @@ const styles = {
     padding: '15px',
     border: '1px solid #333',
     borderRadius: '8px',
-    backgroundColor: '#1a1a1a'
+    backgroundColor: '#1a1a1a',
+    color: '#fff'
   },
   userResult: {
     display: 'flex',
@@ -153,23 +167,39 @@ const styles = {
     alignItems: 'center'
   },
   userInfo: {
-    flex: 1
+    flex: 1,
+    color: '#fff'
+  },
+  'userInfo h3': {
+    margin: '0 0 5px 0',
+    color: '#fff'
+  },
+  'userInfo p': {
+    margin: '0 0 10px 0',
+    color: '#aaa'
   },
   interests: {
     display: 'flex',
-    gap: '5px',
-    marginTop: '10px',
-    flexWrap: 'wrap'
+    flexWrap: 'wrap',
+    gap: '5px'
   },
   interestTag: {
     padding: '3px 8px',
-    backgroundColor: '#333',
+    backgroundColor: '#3b82f6',
+    color: '#fff',
     borderRadius: '12px',
-    fontSize: '12px',
-    color: '#fff'
+    fontSize: '12px'
   },
   interestResult: {
-    textAlign: 'center'
+    color: '#fff'
+  },
+  'interestResult h3': {
+    margin: '0 0 5px 0',
+    color: '#fff'
+  },
+  'interestResult p': {
+    margin: '0',
+    color: '#aaa'
   }
 };
 

@@ -1,4 +1,10 @@
+import React from 'react';
+import FollowButton from './FollowButton';
+import { useAuth } from '../contexts/AuthContext';
+
 const SuggestedUsers = ({ users, posts, onToggleFollow }) => {
+  const { currentUser } = useAuth();
+
   const isUserFollowed = (userId) => {
     return posts.some(
       (post) => post.author.uid === userId && post.author.isFollowing
@@ -27,15 +33,10 @@ const SuggestedUsers = ({ users, posts, onToggleFollow }) => {
               )}
             </div>
 
-            <button
-              style={{
-                ...styles.button,
-                background: followed ? "#6b7280" : "#3b82f6"
-              }}
-              onClick={() => onToggleFollow(user.uid)}
-            >
-              {followed ? "Following" : "Follow"}
-            </button>
+            <FollowButton 
+              targetUserId={user.uid} 
+              currentUserId={currentUser?.uid}
+            />
           </div>
         )
       })}
@@ -84,16 +85,6 @@ const styles = {
     borderRadius: "10px",
     fontSize: "11px",
     color: "#aaa"
-  },
-  button: {
-    padding: "6px 12px",
-    borderRadius: "6px",
-    border: "none",
-    cursor: "pointer",
-    color: "white",
-    fontSize: "12px",
-    fontWeight: "500",
-    transition: "background-color 0.2s"
   }
 }
 

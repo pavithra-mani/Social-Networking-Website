@@ -1,4 +1,5 @@
 const driver = require("../config/neo4j");
+const { randomUUID } = require("crypto");
 
 exports.sendMessage = async (req, res) => {
   const session = driver.session({ database: "irisdb" });
@@ -43,23 +44,44 @@ exports.getChat = async (req, res) => {
     const result = await session.run(
       `
       MATCH (u1:User {uid:$me})-[:SENT]->(m)-[:TO]->(u2:User {uid:$friend})
-      RETURN m.text AS text, m.timestamp AS timestamp, $me AS sender
+      RETURN m.id AS id, m.text AS text, m.timestamp AS timestamp, $me AS sender
 
       UNION
 
       MATCH (u2:User {uid:$friend})-[:SENT]->(m)-[:TO]->(u1:User {uid:$me})
-      RETURN m.text AS text, m.timestamp AS timestamp, $friend AS sender
+      RETURN m.id AS id, m.text AS text, m.timestamp AS timestamp, $friend AS sender
 
       ORDER BY timestamp
       `,
       { me, friend }
     );
 
-    const messages = result.records.map(r => ({
-      text: r.get("text"),
-      timestamp: r.get("timestamp"),
-      sender: r.get("sender")
-    }));
+    const messages = result.records.map(r => {
+      const timestamp = r.get("timestamp");
+      let isoTimestamp;
+      
+      if (timestamp && typeof timestamp === 'object') {
+        // Convert Neo4j DateTime to JavaScript Date
+        isoTimestamp = new Date(
+          timestamp.year.low,
+          timestamp.month.low - 1, // JavaScript months are 0-indexed
+          timestamp.day.low,
+          timestamp.hour.low,
+          timestamp.minute.low,
+          timestamp.second.low,
+          timestamp.nanosecond.low / 1000000
+        ).toISOString();
+      } else {
+        isoTimestamp = new Date().toISOString();
+      }
+      
+      return {
+        id: r.get("id") || `msg-${Date.now()}-${Math.random()}`,
+        text: r.get("text"),
+        timestamp: isoTimestamp,
+        sender: r.get("sender")
+      };
+    });
 
     res.json(messages);
   } catch (e) {

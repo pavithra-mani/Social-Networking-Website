@@ -11,13 +11,39 @@ const HomeFeed = () => {
   const [suggestedUsers, setSuggestedUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const { currentUser } = useAuth();
+  const [currentUserData, setCurrentUserData] = useState({
+    name: "",
+    uid: "",
+    followers: 0,
+    following: 0
+  });
 
   console.log("HomeFeed rendered, currentUser:", currentUser);
 
-  const currentUserData = {
-    uid: currentUser?.uid || "",
-    name: currentUser?.displayName || "User",
-    followers: 0
+  // Function to fetch follower counts
+  const fetchFollowerCounts = async (userId) => {
+    try {
+      const response = await fetch(`/api/follow/counts/${userId}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        console.log("Follower counts:", data);
+        setCurrentUserData(prev => ({
+          ...prev,
+          followers: data.followers,
+          following: data.following
+        }));
+      } else {
+        console.log("Failed to fetch follower counts");
+      }
+    } catch (error) {
+      console.error("Error fetching follower counts:", error);
+    }
   };
 
   useEffect(() => {
@@ -43,13 +69,11 @@ const HomeFeed = () => {
 
         // Load suggested users
         try {
-          const response = await fetch("http://localhost:5001/api/search/users?q=a", {
+          const response = await fetch("/api/search/users?q=a", {
             method: 'GET',
             headers: {
-              'Content-Type': 'application/json',
-              'Origin': 'http://localhost:3000'
-            },
-            mode: 'cors'
+              'Content-Type': 'application/json'
+            }
           });
           
           if (response.ok) {
@@ -74,6 +98,15 @@ const HomeFeed = () => {
             { uid: "demo-2", name: "Bob", interests: ["tech", "sports"] },
             { uid: "demo-3", name: "Carol", interests: ["art", "photography"] }
           ]);
+        }
+
+        // Fetch follower counts for current user
+        if (currentUser?.uid) {
+          setCurrentUserData({
+            name: currentUser.displayName || "User",
+            uid: currentUser.uid
+          });
+          await fetchFollowerCounts(currentUser.uid);
         }
       } catch (err) {
         console.error("Error loading feed:", err);
@@ -283,7 +316,7 @@ const HomeFeed = () => {
                 <span style={styles.statLabel}>Followers</span>
               </div>
               <div style={styles.stat}>
-                <span style={styles.statNumber}>{followingCount}</span>
+                <span style={styles.statNumber}>{currentUserData.following}</span>
                 <span style={styles.statLabel}>Following</span>
               </div>
             </div>

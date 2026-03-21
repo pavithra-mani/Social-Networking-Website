@@ -32,8 +32,19 @@ const Profile = () => {
   const loadProfile = async () => {
     try {
       // Try to get profile from backend
-      const response = await axios.get(`http://localhost:5001/api/profile/${currentUser.uid}`);
-      setProfile(response.data);
+      const response = await fetch(`/api/profile/${currentUser.uid}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        setProfile(data);
+      } else {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
     } catch (error) {
       console.log("Profile not found, using defaults");
       setProfile({
@@ -50,9 +61,21 @@ const Profile = () => {
     console.log("Profile saveProfile called", profile);
     setSaving(true);
     try {
-      const response = await axios.put(`http://localhost:5001/api/profile/${currentUser.uid}`, profile);
-      console.log("Profile saved successfully:", response.data);
-      setEditing(false);
+      const response = await fetch(`/api/profile/${currentUser.uid}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(profile)
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        console.log("Profile saved successfully:", data);
+        setEditing(false);
+      } else {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
     } catch (error) {
       console.error("Failed to save profile:", error);
     } finally {
