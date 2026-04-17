@@ -57,10 +57,10 @@ pipeline {
 
                 echo '🚀 Starting backend...'
                 dir('backend') {
-                    bat 'cmd /c "start cmd /k node server.js"'
+                    bat 'cmd /c "start \"backend-server\" /min node server.js"'
                 }
 
-                echo '✅ Backend running at http://localhost:5001'
+                echo '✅ Backend should be running at http://localhost:5001'
             }
 }
     }
