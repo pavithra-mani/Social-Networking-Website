@@ -53,15 +53,17 @@ pipeline {
         stage('Deploy') {
             steps {
                 echo '🚀 Stopping any existing backend...'
-                bat 'taskkill /F /IM node.exe /T || echo No existing process'
+                bat 'cmd /c "taskkill /F /IM node.exe /T || exit 0"'
+
                 echo '🚀 Starting backend...'
                 dir('backend') {
                     bat 'start /B node server.js > ../backend.log 2>&1'
                 }
+
                 echo '✅ Backend running at http://localhost:5001'
                 echo '✅ Frontend build complete at frontend/build'
             }
-        }
+}
     }
 
     post {
