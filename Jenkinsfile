@@ -63,7 +63,6 @@ pipeline {
                 echo '✅ Backend running at http://localhost:5001'
             }
 }
-}
     }
 
     post {
