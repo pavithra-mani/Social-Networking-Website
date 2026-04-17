@@ -45,7 +45,7 @@ pipeline {
             steps {
                 echo '🔨 Building React frontend...'
                 dir('frontend') {
-                    bat 'cmd /c "npm run build || exit 0"'
+                    bat 'npm run build'
                 }
             }
         }
@@ -53,16 +53,23 @@ pipeline {
         stage('Deploy') {
             steps {
                 echo '🚀 Stopping any existing backend...'
-                bat 'cmd /c "taskkill /F /IM node.exe /T || exit 0"'
+                bat 'taskkill /F /IM node.exe /T & exit 0'
 
-                echo '🚀 Starting backend...'
+                echo '🚀 Writing environment config...'
                 dir('backend') {
-                    bat 'cmd /c "start \"backend-server\" /min node server.js"'
+                    bat '''
+                        echo NEO4J_URI=bolt://localhost:7687> .env
+                        echo NEO4J_USER=neo4j>> .env
+                        echo NEO4J_PASSWORD=your_neo4j_password>> .env
+                        echo PORT=5001>> .env
+                    '''
+                    bat 'start "backend-server" /min cmd /c "node server.js > ..\backend.log 2>&1"'
                 }
 
-                echo '✅ Backend should be running at http://localhost:5001'
+                echo '✅ Backend running at http://localhost:5001'
+                echo '✅ Frontend build at frontend/build'
             }
-}
+        }
     }
 
     post {
