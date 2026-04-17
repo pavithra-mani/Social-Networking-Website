@@ -45,7 +45,7 @@ pipeline {
             steps {
                 echo '🔨 Building React frontend...'
                 dir('frontend') {
-                    bat 'npm run build'
+                    bat 'set CI=false && npm run build'
                 }
             }
         }
