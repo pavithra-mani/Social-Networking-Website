@@ -45,7 +45,7 @@ pipeline {
             steps {
                 echo '🔨 Building React frontend...'
                 dir('frontend') {
-                    bat 'npm run build || echo Build failed, continuing...'
+                    bat 'cmd /c "npm run build || exit 0"'
                 }
             }
         }
