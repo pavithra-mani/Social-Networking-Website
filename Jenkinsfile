@@ -1,21 +1,22 @@
 pipeline {
     agent any
 
-    triggers {
-        pollSCM('H/5 * * * *')
+    tools {
+        nodejs 'NodeJS-20'
     }
 
     stages {
 
         stage('Checkout') {
             steps {
-                echo 'Pulling latest code from GitHub...'
+                echo '📥 Pulling latest code...'
                 checkout scm
             }
         }
 
         stage('Install Backend Dependencies') {
             steps {
+                echo '📦 Installing backend dependencies...'
                 dir('backend') {
                     bat 'npm install'
                 }
@@ -24,14 +25,25 @@ pipeline {
 
         stage('Install Frontend Dependencies') {
             steps {
+                echo '📦 Installing frontend dependencies...'
                 dir('frontend') {
                     bat 'npm install'
                 }
             }
         }
 
+        stage('Run Frontend Tests') {
+            steps {
+                echo '🧪 Running frontend tests...'
+                dir('frontend') {
+                    bat 'set CI=true && npm test -- --watchAll=false --passWithNoTests'
+                }
+            }
+        }
+
         stage('Build Frontend') {
             steps {
+                echo '🔨 Building React frontend...'
                 dir('frontend') {
                     bat 'npm run build'
                 }
@@ -40,21 +52,24 @@ pipeline {
 
         stage('Deploy') {
             steps {
-                bat 'taskkill /F /IM node.exe 2>nul || exit 0'
+                echo '🚀 Stopping any existing backend...'
+                bat 'taskkill /F /IM node.exe /T || echo No existing process'
+                echo '🚀 Starting backend...'
                 dir('backend') {
-                    bat 'start "SNW-Backend" /B node server.js'
+                    bat 'start /B node server.js > ../backend.log 2>&1'
                 }
-                echo 'App deployed at http://localhost:5001'
+                echo '✅ Backend running at http://localhost:5001'
+                echo '✅ Frontend build complete at frontend/build'
             }
         }
     }
 
     post {
         success {
-            echo 'Pipeline SUCCESS - App is running'
+            echo '🎉 Pipeline completed successfully!'
         }
         failure {
-            echo 'Pipeline FAILED - Check logs above'
+            echo '❌ Pipeline failed. Check the logs above.'
         }
     }
 }
