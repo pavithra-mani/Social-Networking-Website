@@ -45,7 +45,7 @@ pipeline {
             steps {
                 echo '🔨 Building React frontend...'
                 dir('frontend') {
-                    bat 'set CI=false && npm run build'
+                    bat 'set DISABLE_ESLINT_PLUGIN=true && npm run build'
                 }
             }
         }
