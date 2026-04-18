@@ -49,11 +49,16 @@ pipeline {
                     '''
                 }
 
-                echo '🚀 Starting backend...'
-                bat 'powershell -Command "Start-Process -FilePath \'C:\\Program Files\\nodejs\\node.exe\' -ArgumentList \'server.js\' -WorkingDirectory \'C:\\ProgramData\\Jenkins\\.jenkins\\workspace\\Social-Network-Pipeline\\backend\' -WindowStyle Normal"'
+                echo '🚀 Writing startup batch file...'
+                bat '''
+                    echo @echo off > C:\\Users\\Prajwal\\Desktop\\start-app.bat
+                    echo start "Backend" /D "C:\\ProgramData\\Jenkins\\.jenkins\\workspace\\Social-Network-Pipeline\\backend" "C:\\Program Files\\nodejs\\node.exe" server.js >> C:\\Users\\Prajwal\\Desktop\\start-app.bat
+                    echo set CI= >> C:\\Users\\Prajwal\\Desktop\\start-app.bat
+                    echo start "Frontend" /D "C:\\ProgramData\\Jenkins\\.jenkins\\workspace\\Social-Network-Pipeline\\frontend" cmd /k ""C:\\Program Files\\nodejs\\npm.cmd" start" >> C:\\Users\\Prajwal\\Desktop\\start-app.bat
+                '''
 
-                echo '🚀 Starting frontend...'
-                bat 'powershell -Command "Start-Process -FilePath \'cmd.exe\' -ArgumentList \'/k set CI=^& cd /d C:\\ProgramData\\Jenkins\\.jenkins\\workspace\\Social-Network-Pipeline\\frontend ^& C:\\Program Files\\nodejs\\npm.cmd start\' -WindowStyle Normal"'
+                echo '🚀 Launching app...'
+                bat 'powershell -Command "Start-Process -FilePath \'C:\\Users\\Prajwal\\Desktop\\start-app.bat\' -WindowStyle Normal"'
 
                 echo '✅ Backend running at http://localhost:5001'
                 echo '✅ Frontend running at http://localhost:3000'
