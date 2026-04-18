@@ -35,7 +35,7 @@ pipeline {
             }
         }
         stage('Deploy') {
-             steps {
+            steps {
                 echo '🚀 Stopping any existing processes...'
                 bat 'taskkill /F /IM node.exe /T & exit 0'
 
@@ -49,10 +49,30 @@ pipeline {
                     '''
                 }
 
-                echo '🚀 Starting backend and frontend...'
+                echo '🚀 Launching backend and frontend...'
                 bat '''
-                    powershell -Command "Start-Process cmd -ArgumentList '/k', 'cd /d C:\\ProgramData\\Jenkins\\.jenkins\\workspace\\Social-Network-Pipeline\\backend && node server.js' -WindowStyle Normal"
-                    powershell -Command "Start-Process cmd -ArgumentList '/k', 'cd /d C:\\ProgramData\\Jenkins\\.jenkins\\workspace\\Social-Network-Pipeline\\frontend && set CI=& npm start' -WindowStyle Normal"
+                    powershell -Command "& {
+                        $backendPath = 'C:\\ProgramData\\Jenkins\\.jenkins\\workspace\\Social-Network-Pipeline\\backend'
+                        $frontendPath = 'C:\\ProgramData\\Jenkins\\.jenkins\\workspace\\Social-Network-Pipeline\\frontend'
+                        
+                        $backendAction = New-ScheduledTaskAction -Execute 'node.exe' -Argument 'server.js' -WorkingDirectory $backendPath
+                        $frontendAction = New-ScheduledTaskAction -Execute 'cmd.exe' -Argument '/c npm start' -WorkingDirectory $frontendPath
+                        
+                        $trigger = New-ScheduledTaskTrigger -Once -At (Get-Date).AddSeconds(3)
+                        $settings = New-ScheduledTaskSettingsSet -ExecutionTimeLimit (New-TimeSpan -Hours 8)
+                        $principal = New-ScheduledTaskPrincipal -UserId $env:USERNAME -LogonType Interactive -RunLevel Highest
+                        
+                        Unregister-ScheduledTask -TaskName 'JenkinsBackend' -Confirm:$false -ErrorAction SilentlyContinue
+                        Unregister-ScheduledTask -TaskName 'JenkinsFrontend' -Confirm:$false -ErrorAction SilentlyContinue
+                        
+                        Register-ScheduledTask -TaskName 'JenkinsBackend' -Action $backendAction -Trigger $trigger -Settings $settings -Principal $principal -Force
+                        Register-ScheduledTask -TaskName 'JenkinsFrontend' -Action $frontendAction -Trigger $trigger -Settings $settings -Principal $principal -Force
+                        
+                        Start-ScheduledTask -TaskName 'JenkinsBackend'
+                        Start-ScheduledTask -TaskName 'JenkinsFrontend'
+                        
+                        Write-Host 'Tasks launched successfully'
+                    }"
                 '''
 
                 echo '✅ Backend starting at http://localhost:5001'
