@@ -35,7 +35,7 @@ pipeline {
             }
         }
         stage('Deploy') {
-            steps {
+             steps {
                 echo '🚀 Stopping any existing processes...'
                 bat 'taskkill /F /IM node.exe /T & exit 0'
 
@@ -44,19 +44,19 @@ pipeline {
                     bat '''
                         echo NEO4J_URI=bolt://localhost:7687> .env
                         echo NEO4J_USER=neo4j>> .env
-                        echo NEO4J_PASSWORD=your_neo4j_password>> .env
+                        echo NEO4J_PASSWORD=your_actual_password>> .env
                         echo PORT=5001>> .env
                     '''
-                    bat 'start "backend-server" /min cmd /c "node server.js > ..\\backend.log 2>&1"'
                 }
 
-                echo '🚀 Starting frontend...'
-                dir('frontend') {
-                    bat 'start "frontend-server" /min cmd /c "npm start > ..\\frontend.log 2>&1"'
-                }
+                echo '🚀 Starting backend and frontend...'
+                bat '''
+                    powershell -Command "Start-Process cmd -ArgumentList '/k', 'cd /d C:\\ProgramData\\Jenkins\\.jenkins\\workspace\\Social-Network-Pipeline\\backend && node server.js' -WindowStyle Normal"
+                    powershell -Command "Start-Process cmd -ArgumentList '/k', 'cd /d C:\\ProgramData\\Jenkins\\.jenkins\\workspace\\Social-Network-Pipeline\\frontend && set CI=& npm start' -WindowStyle Normal"
+                '''
 
-                echo '✅ Backend running at http://localhost:5001'
-                echo '✅ Frontend running at http://localhost:3000'
+                echo '✅ Backend starting at http://localhost:5001'
+                echo '✅ Frontend starting at http://localhost:3000'
             }
         }
     }
