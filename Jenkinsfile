@@ -50,10 +50,10 @@ pipeline {
                 }
 
                 echo '🚀 Starting backend...'
-                bat 'powershell -Command "Start-Process node -ArgumentList \'server.js\' -WorkingDirectory \'C:\\ProgramData\\Jenkins\\.jenkins\\workspace\\Social-Network-Pipeline\\backend\' -WindowStyle Normal"'
+                bat 'powershell -Command "Start-Process -FilePath \'C:\\Program Files\\nodejs\\node.exe\' -ArgumentList \'server.js\' -WorkingDirectory \'C:\\ProgramData\\Jenkins\\.jenkins\\workspace\\Social-Network-Pipeline\\backend\' -WindowStyle Normal"'
 
                 echo '🚀 Starting frontend...'
-                bat 'powershell -Command "Start-Process cmd -ArgumentList \'/k\', \'cd /d C:\\ProgramData\\Jenkins\\.jenkins\\workspace\\Social-Network-Pipeline\\frontend && set CI=& npm start\' -WindowStyle Normal"'
+                bat 'powershell -Command "Start-Process -FilePath \'C:\\Program Files\\nodejs\\npm.cmd\' -ArgumentList \'start\' -WorkingDirectory \'C:\\ProgramData\\Jenkins\\.jenkins\\workspace\\Social-Network-Pipeline\\frontend\' -WindowStyle Normal -Environment @{CI=\'\'}"'
 
                 echo '✅ Backend running at http://localhost:5001'
                 echo '✅ Frontend running at http://localhost:3000'
