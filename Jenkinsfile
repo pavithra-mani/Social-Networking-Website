@@ -1,19 +1,15 @@
 pipeline {
     agent any
-
     tools {
         nodejs 'NodeJS-20'
     }
-
     stages {
-
         stage('Checkout') {
             steps {
                 echo '📥 Pulling latest code...'
                 checkout scm
             }
         }
-
         stage('Install Backend Dependencies') {
             steps {
                 echo '📦 Installing backend dependencies...'
@@ -22,7 +18,6 @@ pipeline {
                 }
             }
         }
-
         stage('Install Frontend Dependencies') {
             steps {
                 echo '📦 Installing frontend dependencies...'
@@ -31,7 +26,6 @@ pipeline {
                 }
             }
         }
-
         stage('Run Frontend Tests') {
             steps {
                 echo '🧪 Running frontend tests...'
@@ -40,19 +34,9 @@ pipeline {
                 }
             }
         }
-
-        stage('Build Frontend') {
-            steps {
-                echo '🔨 Building React frontend...'
-                dir('frontend') {
-                    bat 'set CI= && npm run build'
-                }
-            }
-        }
-
         stage('Deploy') {
             steps {
-                echo '🚀 Stopping any existing backend...'
+                echo '🚀 Stopping any existing processes...'
                 bat 'taskkill /F /IM node.exe /T & exit 0'
 
                 echo '🚀 Writing environment config...'
@@ -63,15 +47,19 @@ pipeline {
                         echo NEO4J_PASSWORD=your_neo4j_password>> .env
                         echo PORT=5001>> .env
                     '''
-                    bat 'start "backend-server" /min cmd /c "node server.js > ..\backend.log 2>&1"'
+                    bat 'start "backend-server" /min cmd /c "node server.js > ..\\backend.log 2>&1"'
+                }
+
+                echo '🚀 Starting frontend...'
+                dir('frontend') {
+                    bat 'start "frontend-server" /min cmd /c "npm start > ..\\frontend.log 2>&1"'
                 }
 
                 echo '✅ Backend running at http://localhost:5001'
-                echo '✅ Frontend build at frontend/build'
+                echo '✅ Frontend running at http://localhost:3000'
             }
         }
     }
-
     post {
         success {
             echo '🎉 Pipeline completed successfully!'
