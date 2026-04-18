@@ -49,31 +49,24 @@ pipeline {
                     '''
                 }
 
-                echo '🚀 Launching backend and frontend...'
+                echo '🚀 Writing deploy script...'
                 bat '''
-                    powershell -Command "& {
-                        $backendPath = 'C:\\ProgramData\\Jenkins\\.jenkins\\workspace\\Social-Network-Pipeline\\backend'
-                        $frontendPath = 'C:\\ProgramData\\Jenkins\\.jenkins\\workspace\\Social-Network-Pipeline\\frontend'
-                        
-                        $backendAction = New-ScheduledTaskAction -Execute 'node.exe' -Argument 'server.js' -WorkingDirectory $backendPath
-                        $frontendAction = New-ScheduledTaskAction -Execute 'cmd.exe' -Argument '/c npm start' -WorkingDirectory $frontendPath
-                        
-                        $trigger = New-ScheduledTaskTrigger -Once -At (Get-Date).AddSeconds(3)
-                        $settings = New-ScheduledTaskSettingsSet -ExecutionTimeLimit (New-TimeSpan -Hours 8)
-                        $principal = New-ScheduledTaskPrincipal -UserId $env:USERNAME -LogonType Interactive -RunLevel Highest
-                        
-                        Unregister-ScheduledTask -TaskName 'JenkinsBackend' -Confirm:$false -ErrorAction SilentlyContinue
-                        Unregister-ScheduledTask -TaskName 'JenkinsFrontend' -Confirm:$false -ErrorAction SilentlyContinue
-                        
-                        Register-ScheduledTask -TaskName 'JenkinsBackend' -Action $backendAction -Trigger $trigger -Settings $settings -Principal $principal -Force
-                        Register-ScheduledTask -TaskName 'JenkinsFrontend' -Action $frontendAction -Trigger $trigger -Settings $settings -Principal $principal -Force
-                        
-                        Start-ScheduledTask -TaskName 'JenkinsBackend'
-                        Start-ScheduledTask -TaskName 'JenkinsFrontend'
-                        
-                        Write-Host 'Tasks launched successfully'
-                    }"
+                    echo $b = 'C:\\ProgramData\\Jenkins\\.jenkins\\workspace\\Social-Network-Pipeline\\backend' > C:\\deploy.ps1
+                    echo $f = 'C:\\ProgramData\\Jenkins\\.jenkins\\workspace\\Social-Network-Pipeline\\frontend' >> C:\\deploy.ps1
+                    echo Unregister-ScheduledTask -TaskName 'JenkinsBackend' -Confirm:$false -ErrorAction SilentlyContinue >> C:\\deploy.ps1
+                    echo Unregister-ScheduledTask -TaskName 'JenkinsFrontend' -Confirm:$false -ErrorAction SilentlyContinue >> C:\\deploy.ps1
+                    echo $ba = New-ScheduledTaskAction -Execute 'node.exe' -Argument 'server.js' -WorkingDirectory $b >> C:\\deploy.ps1
+                    echo $fa = New-ScheduledTaskAction -Execute 'cmd.exe' -Argument '/c npm start' -WorkingDirectory $f >> C:\\deploy.ps1
+                    echo $tr = New-ScheduledTaskTrigger -Once -At (Get-Date).AddSeconds(5) >> C:\\deploy.ps1
+                    echo $st = New-ScheduledTaskSettingsSet -ExecutionTimeLimit (New-TimeSpan -Hours 8) >> C:\\deploy.ps1
+                    echo $pr = New-ScheduledTaskPrincipal -UserId $env:USERNAME -LogonType Interactive -RunLevel Highest >> C:\\deploy.ps1
+                    echo Register-ScheduledTask -TaskName 'JenkinsBackend' -Action $ba -Trigger $tr -Settings $st -Principal $pr -Force >> C:\\deploy.ps1
+                    echo Register-ScheduledTask -TaskName 'JenkinsFrontend' -Action $fa -Trigger $tr -Settings $st -Principal $pr -Force >> C:\\deploy.ps1
+                    echo Start-ScheduledTask -TaskName 'JenkinsBackend' >> C:\\deploy.ps1
+                    echo Start-ScheduledTask -TaskName 'JenkinsFrontend' >> C:\\deploy.ps1
                 '''
+
+                bat 'powershell -ExecutionPolicy Bypass -File C:\\deploy.ps1'
 
                 echo '✅ Backend starting at http://localhost:5001'
                 echo '✅ Frontend starting at http://localhost:3000'
