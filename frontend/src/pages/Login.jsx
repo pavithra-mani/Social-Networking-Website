@@ -41,7 +41,7 @@ const Login = () => {
       <div style={styles.leftPanel}>
         <div style={styles.branding}>
           <h1 style={styles.logo}>
-            iris Social DEEZ NUTS<em>.</em>
+            iris Social<em>.</em>
           </h1>
           <p style={styles.tagline}>connect through shared interests</p>
           <div style={styles.divider}></div>
