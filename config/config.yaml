@@ -1,0 +1,47 @@
+phase1:
+  audio:
+    model_size: "base"
+    language: "en"
+    batch_size: 16
+    compute_type: "float32"
+
+  frame_extraction:
+    fps: 1
+
+  clustering:
+    clusters_per_minute: 4.0
+    min_clusters: 8
+    max_clusters: 120
+    random_state: 42
+    feature_resize: [64, 64]
+
+  scoring:
+    weight_sharpness: 0.4
+    weight_contrast: 0.3
+    weight_edge_density: 0.3
+
+  selection:
+    min_frames_per_scene: 1
+    max_frames_per_scene: 5
+    sec_per_extra_frame: 15.0
+    min_score_threshold: 0.15
+    hash_threshold: 8
+
+dataset:
+  tvsum:
+    root: "F:\\TVSUM\\ydata-tvsum50-v1_1"
+    video_dir: "ydata-tvsum50-video\\video"
+    anno_file: "ydata-tvsum50-data\\data\\ydata-tvsum50-anno.tsv"
+    info_file: "ydata-tvsum50-data\\data\\ydata-tvsum50-info.tsv"
+  activitynet:
+    root: ""
+    video_dir: "videos"
+    anno_file: "activity_net.v1-3.min.json"
+
+paths:
+  output_transcripts: "outputs\\transcripts"
+  output_keyframes: "outputs\\keyframes"
+  output_scenes: "outputs\\scenes"
+  output_frame_scores: "outputs\\frame_scores"
+  output_frames: "outputs\\frames"
+  output_timestamps: "outputs\\timestamps"
