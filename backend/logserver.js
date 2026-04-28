@@ -20,3 +20,8 @@ app.get('/logs/:name', (req, res) => {
 });
 
 app.listen(5002, () => console.log('Log server on http://localhost:5002'));
+
+
+app.get('/.well-known/appspecific/com.chrome.devtools.json', (req, res) => {
+  res.json({});
+});
