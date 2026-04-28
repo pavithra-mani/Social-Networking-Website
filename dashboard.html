@@ -458,6 +458,52 @@
     line-height: 1.6;
   }
   .cors-note strong { color: #f5c842; }
+
+  /* Tabs */
+  .tab-bar {
+    display: flex;
+    gap: 0;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+    padding: 0 16px;
+  }
+  .tab-btn {
+    background: transparent;
+    border: none;
+    border-bottom: 2px solid transparent;
+    border-radius: 0;
+    color: var(--muted);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    padding: 10px 14px 8px;
+    cursor: pointer;
+    transition: all 0.15s;
+    letter-spacing: 0.3px;
+  }
+  .tab-btn:hover { color: var(--text); }
+  .tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
+  .tab-pane { display: none; }
+  .tab-pane.active { display: block; }
+  .log-empty-note {
+    padding: 32px 20px;
+    color: var(--muted);
+    font-size: 11px;
+    text-align: center;
+    line-height: 1.8;
+  }
+  pre.artifact-log {
+    padding: 16px 20px;
+    font-size: 11.5px;
+    line-height: 1.7;
+    color: #a8a8c0;
+    max-height: 500px;
+    overflow-y: auto;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+  pre.artifact-log::-webkit-scrollbar { width: 5px; }
+  pre.artifact-log::-webkit-scrollbar-track { background: transparent; }
+  pre.artifact-log::-webkit-scrollbar-thumb { background: var(--dim); border-radius: 3px; }
 </style>
 </head>
 <body>
@@ -538,7 +584,7 @@
         </div>
       </div>
 
-      <!-- Console -->
+      <!-- Console + Log Tabs -->
       <div class="console-wrap">
         <div class="console-toolbar">
           <div class="console-dot cd-red"></div>
@@ -547,7 +593,20 @@
           <span class="console-title" id="console-title">console output</span>
           <button class="btn-ghost" style="padding:4px 10px; font-size:10px;" onclick="scrollLogBottom()">↓ bottom</button>
         </div>
-        <pre id="log-output">Select a build or click Load to view logs.</pre>
+        <div class="tab-bar">
+          <button class="tab-btn active" id="tab-btn-console" onclick="switchTab('console')">📋 Console</button>
+          <button class="tab-btn" id="tab-btn-backend" onclick="switchTab('backend')">⚙️ backend.log</button>
+          <button class="tab-btn" id="tab-btn-frontend" onclick="switchTab('frontend')">🌐 frontend.log</button>
+        </div>
+        <div class="tab-pane active" id="tab-console">
+          <pre id="log-output">Select a build or click Load to view logs.</pre>
+        </div>
+        <div class="tab-pane" id="tab-backend">
+          <pre id="backend-log-output" class="artifact-log"><div class="log-empty-note">Load a build first, then click this tab.<br><span style="font-size:10px;color:var(--muted)">Requires start-app.bat to have run after the build.</span></div></pre>
+        </div>
+        <div class="tab-pane" id="tab-frontend">
+          <pre id="frontend-log-output" class="artifact-log"><div class="log-empty-note">Load a build first, then click this tab.<br><span style="font-size:10px;color:var(--muted)">Requires start-app.bat to have run after the build.</span></div></pre>
+        </div>
       </div>
 
     </main>
@@ -783,9 +842,83 @@ function toggleAutoRefresh() {
   }
 }
 
+// ── Tab switching ─────────────────────────────────────────────
+function switchTab(name) {
+  ['console', 'backend', 'frontend'].forEach(t => {
+    document.getElementById(`tab-${t}`).classList.remove('active');
+    document.getElementById(`tab-btn-${t}`).classList.remove('active');
+  });
+  document.getElementById(`tab-${name}`).classList.add('active');
+  document.getElementById(`tab-btn-${name}`).classList.add('active');
+
+  if ((name === 'backend' || name === 'frontend') && state.currentBuild) {
+    loadArtifactLog(name);
+  }
+}
+
+// ── Fetch log from local log server (localhost:5002) ──────────
+async function loadArtifactLog(type) {
+  const filename = type === 'backend' ? 'backend.log' : 'frontend.log';
+  const outputEl = document.getElementById(`${type}-log-output`);
+  outputEl.innerHTML = `<div class="log-empty-note">Fetching ${filename}…</div>`;
+
+  try {
+    const r = await fetch(`http://localhost:5002/logs/${filename}`, { cache: 'no-store' });
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    const text = await r.text();
+    if (!text.trim()) {
+      outputEl.innerHTML = `<div class="log-empty-note">
+        ${filename} is empty — app may still be starting.<br>
+        <span style="font-size:10px;color:var(--muted)">Wait a few seconds and click the tab again.</span>
+      </div>`;
+      return;
+    }
+    outputEl.innerHTML = colorizeServerLog(text, type);
+    outputEl.scrollTop = outputEl.scrollHeight;
+  } catch(e) {
+    // Fallback: try Jenkins artifact directly
+    try {
+      const buildNum = state.currentBuild || 'lastBuild';
+      const artifactUrl = `${state.jenkinsUrl}/job/${encodeURIComponent(state.jobName)}/${buildNum}/artifact/${filename}`;
+      const r2 = await fetch(artifactUrl, { cache: 'no-store' });
+      if (!r2.ok) throw new Error('not found');
+      const text2 = await r2.text();
+      if (!text2.trim()) throw new Error('empty');
+      outputEl.innerHTML = colorizeServerLog(text2, type);
+      outputEl.scrollTop = outputEl.scrollHeight;
+    } catch(_) {
+      outputEl.innerHTML = `<div class="log-empty-note">
+        <span style="color:var(--fail)">Could not load ${filename}.</span><br><br>
+        <span style="font-size:10px;color:var(--muted)">
+          Make sure you:<br>
+          1. Ran the Jenkins build successfully<br>
+          2. Double-clicked start-app.bat on your Desktop<br>
+          3. The log server is running (one of the windows that opens)
+        </span>
+      </div>`;
+    }
+  }
+}
+
+// ── Colorize server/app logs ──────────────────────────────────
+function colorizeServerLog(text, type) {
+  return text
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .split('\n')
+    .map(line => {
+      if (/error|Error|ERROR/.test(line))  return `<span class="log-error">${line}</span>`;
+      if (/warn|WARN|Warning/.test(line))  return `<span class="log-warn">${line}</span>`;
+      if (/Server running|Listening|started|compiled successfully|ready/i.test(line)) return `<span class="log-success">${line}</span>`;
+      if (/GET|POST|PUT|DELETE|PATCH/.test(line)) return `<span class="log-info">${line}</span>`;
+      if (/neo4j|bolt:|database|dotenv/i.test(line)) return `<span style="color:#c0abff">${line}</span>`;
+      if (/^\s*$/.test(line)) return line;
+      return `<span style="color:#8888a8">${line}</span>`;
+    }).join('\n');
+}
+
 // Auto-load on page open
 window.addEventListener('load', () => {
-  // just wait for user to click Load
+  // wait for user to click Load
 });
 </script>
 </body>
