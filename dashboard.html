@@ -1,0 +1,792 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Iris · Pipeline Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&family=Syne:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #09090f;
+    --surface: #111118;
+    --surface2: #18181f;
+    --border: #222230;
+    --accent: #7c6af7;
+    --accent2: #3ecfcf;
+    --success: #22d47a;
+    --fail: #f04f4f;
+    --warn: #f5a623;
+    --running: #7c6af7;
+    --text: #e8e8f0;
+    --muted: #6b6b80;
+    --dim: #2a2a38;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'JetBrains Mono', monospace;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Subtle grid background */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(var(--border) 1px, transparent 1px),
+      linear-gradient(90deg, var(--border) 1px, transparent 1px);
+    background-size: 40px 40px;
+    opacity: 0.3;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .shell {
+    position: relative;
+    z-index: 1;
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 0 24px 60px;
+  }
+
+  /* ── HEADER ── */
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 24px 0 20px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 28px;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+
+  .logo {
+    font-family: 'Syne', sans-serif;
+    font-weight: 800;
+    font-size: 22px;
+    letter-spacing: -0.5px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .logo span { color: var(--accent); }
+  .logo em {
+    font-style: normal;
+    font-size: 11px;
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 400;
+    color: var(--muted);
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    padding: 2px 8px;
+    border-radius: 4px;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+  }
+
+  .header-controls {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .config-row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+
+  input[type="text"] {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    padding: 7px 12px;
+    border-radius: 6px;
+    outline: none;
+    transition: border-color 0.2s;
+    width: 200px;
+  }
+  input[type="text"]:focus { border-color: var(--accent); }
+  input[type="text"]::placeholder { color: var(--muted); }
+
+  button {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    border: none;
+    border-radius: 6px;
+    padding: 7px 16px;
+    transition: all 0.15s;
+  }
+
+  .btn-primary {
+    background: var(--accent);
+    color: #fff;
+  }
+  .btn-primary:hover { background: #6a58e8; }
+
+  .btn-ghost {
+    background: var(--surface2);
+    color: var(--text);
+    border: 1px solid var(--border);
+  }
+  .btn-ghost:hover { border-color: var(--accent); color: var(--accent); }
+
+  .btn-danger {
+    background: transparent;
+    color: var(--fail);
+    border: 1px solid var(--fail);
+  }
+  .btn-danger:hover { background: rgba(240,79,79,0.1); }
+
+  /* auto-refresh toggle */
+  .refresh-toggle {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 11px;
+    color: var(--muted);
+    cursor: pointer;
+    user-select: none;
+    padding: 7px 12px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--surface2);
+    transition: all 0.15s;
+  }
+  .refresh-toggle:hover { border-color: var(--accent2); color: var(--accent2); }
+  .refresh-toggle.active { border-color: var(--accent2); color: var(--accent2); }
+  .pulse-dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--muted);
+    transition: background 0.2s;
+  }
+  .refresh-toggle.active .pulse-dot {
+    background: var(--accent2);
+    animation: pulse 1.4s ease infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+  }
+
+  /* ── LAYOUT ── */
+  .layout {
+    display: grid;
+    grid-template-columns: 260px 1fr;
+    gap: 20px;
+    align-items: start;
+  }
+
+  @media (max-width: 900px) {
+    .layout { grid-template-columns: 1fr; }
+  }
+
+  /* ── SIDEBAR ── */
+  .sidebar { display: flex; flex-direction: column; gap: 16px; }
+
+  .panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+
+  .panel-header {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--muted);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  /* Build history list */
+  .build-list { max-height: 420px; overflow-y: auto; }
+  .build-list::-webkit-scrollbar { width: 4px; }
+  .build-list::-webkit-scrollbar-track { background: transparent; }
+  .build-list::-webkit-scrollbar-thumb { background: var(--dim); border-radius: 2px; }
+
+  .build-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--border);
+    cursor: pointer;
+    transition: background 0.12s;
+    text-decoration: none;
+    color: inherit;
+  }
+  .build-item:last-child { border-bottom: none; }
+  .build-item:hover { background: var(--surface2); }
+  .build-item.active { background: rgba(124,106,247,0.1); border-left: 2px solid var(--accent); }
+
+  .build-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .dot-success { background: var(--success); box-shadow: 0 0 6px var(--success); }
+  .dot-fail { background: var(--fail); box-shadow: 0 0 6px var(--fail); }
+  .dot-running { background: var(--running); box-shadow: 0 0 6px var(--running); animation: pulse 1.4s ease infinite; }
+  .dot-unknown { background: var(--muted); }
+
+  .build-info { flex: 1; min-width: 0; }
+  .build-num { font-size: 13px; font-weight: 500; }
+  .build-meta { font-size: 10px; color: var(--muted); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+  .build-duration {
+    font-size: 10px;
+    color: var(--muted);
+    flex-shrink: 0;
+  }
+
+  /* ── MAIN AREA ── */
+  .main { display: flex; flex-direction: column; gap: 20px; }
+
+  /* Build header card */
+  .build-header-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 20px 24px;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    flex-wrap: wrap;
+  }
+
+  .build-status-badge {
+    font-family: 'Syne', sans-serif;
+    font-weight: 800;
+    font-size: 32px;
+    letter-spacing: -1px;
+    min-width: 120px;
+  }
+  .status-SUCCESS { color: var(--success); }
+  .status-FAILURE { color: var(--fail); }
+  .status-IN_PROGRESS { color: var(--running); }
+  .status-UNKNOWN { color: var(--muted); }
+
+  .build-meta-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+    gap: 12px 24px;
+    flex: 1;
+  }
+  .meta-item label {
+    display: block;
+    font-size: 9px;
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 4px;
+  }
+  .meta-item value {
+    font-size: 13px;
+    color: var(--text);
+  }
+
+  /* Stages */
+  .stages-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 10px;
+  }
+
+  .stage-card {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 14px;
+    position: relative;
+    overflow: hidden;
+  }
+  .stage-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0;
+    width: 3px;
+    height: 100%;
+  }
+  .stage-card.stage-SUCCESS::before { background: var(--success); }
+  .stage-card.stage-FAILED::before { background: var(--fail); }
+  .stage-card.stage-IN_PROGRESS::before { background: var(--running); }
+  .stage-card.stage-NOT_EXECUTED::before { background: var(--muted); }
+
+  .stage-name { font-size: 11px; font-weight: 500; margin-bottom: 6px; }
+  .stage-status { font-size: 10px; color: var(--muted); }
+  .stage-bar-track {
+    height: 3px;
+    background: var(--dim);
+    border-radius: 2px;
+    margin-top: 8px;
+    overflow: hidden;
+  }
+  .stage-bar-fill {
+    height: 100%;
+    border-radius: 2px;
+    transition: width 0.6s ease;
+  }
+  .stage-SUCCESS .stage-bar-fill { background: var(--success); }
+  .stage-FAILED .stage-bar-fill { background: var(--fail); }
+  .stage-IN_PROGRESS .stage-bar-fill { background: var(--running); }
+
+  /* Artifacts panel */
+  .artifact-list { padding: 8px 0; }
+  .artifact-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 16px;
+    font-size: 12px;
+    color: var(--text);
+    text-decoration: none;
+    transition: background 0.12s;
+    border-bottom: 1px solid var(--border);
+  }
+  .artifact-item:last-child { border-bottom: none; }
+  .artifact-item:hover { background: var(--surface2); color: var(--accent2); }
+  .artifact-icon { color: var(--accent2); font-size: 14px; }
+  .artifact-size { margin-left: auto; font-size: 10px; color: var(--muted); }
+
+  /* Console */
+  .console-wrap {
+    background: #070710;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+
+  .console-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+  }
+
+  .console-dot { width: 10px; height: 10px; border-radius: 50%; }
+  .cd-red { background: #f04f4f; }
+  .cd-yellow { background: #f5a623; }
+  .cd-green { background: #22d47a; }
+  .console-title { margin-left: 8px; font-size: 11px; color: var(--muted); flex: 1; }
+
+  pre#log-output {
+    padding: 16px 20px;
+    font-size: 11.5px;
+    line-height: 1.7;
+    color: #a8a8c0;
+    max-height: 500px;
+    overflow-y: auto;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+  pre#log-output::-webkit-scrollbar { width: 5px; }
+  pre#log-output::-webkit-scrollbar-track { background: transparent; }
+  pre#log-output::-webkit-scrollbar-thumb { background: var(--dim); border-radius: 3px; }
+
+  /* Log color coding */
+  .log-stage { color: #c0abff; font-weight: 700; }
+  .log-success { color: var(--success); }
+  .log-error { color: var(--fail); }
+  .log-warn { color: var(--warn); }
+  .log-info { color: var(--accent2); }
+  .log-dim { color: #454560; }
+
+  /* Empty / loading states */
+  .empty-state {
+    text-align: center;
+    padding: 48px 24px;
+    color: var(--muted);
+    font-size: 12px;
+  }
+  .empty-state .icon { font-size: 32px; margin-bottom: 12px; }
+
+  .loading-bar {
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--accent), var(--accent2), transparent);
+    background-size: 200% 100%;
+    animation: shimmer 1.2s ease infinite;
+  }
+  @keyframes shimmer {
+    0% { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
+  }
+
+  /* Error toast */
+  #error-toast {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    background: rgba(240,79,79,0.15);
+    border: 1px solid var(--fail);
+    color: var(--fail);
+    padding: 10px 16px;
+    border-radius: 8px;
+    font-size: 12px;
+    max-width: 360px;
+    display: none;
+    z-index: 999;
+  }
+
+  /* CORS note */
+  .cors-note {
+    background: rgba(245,166,35,0.08);
+    border: 1px solid rgba(245,166,35,0.3);
+    border-radius: 8px;
+    padding: 12px 16px;
+    font-size: 11px;
+    color: var(--warn);
+    line-height: 1.6;
+  }
+  .cors-note strong { color: #f5c842; }
+</style>
+</head>
+<body>
+<div class="shell">
+
+  <!-- HEADER -->
+  <header>
+    <div class="logo">
+      iris <span>pipeline</span> <em>dashboard</em>
+    </div>
+    <div class="header-controls">
+      <div class="config-row">
+        <input type="text" id="jenkins-url" value="http://localhost:8080" placeholder="Jenkins URL">
+        <input type="text" id="job-name" value="Social-Network-Pipeline" placeholder="Job name">
+        <button class="btn-primary" onclick="loadDashboard()">Load</button>
+      </div>
+      <div class="refresh-toggle" id="refresh-toggle" onclick="toggleAutoRefresh()">
+        <div class="pulse-dot"></div>
+        Auto-refresh
+      </div>
+    </div>
+  </header>
+
+  <!-- CORS note shown initially -->
+  <div class="cors-note" id="cors-note" style="margin-bottom: 20px;">
+    <strong>Setup required:</strong> In Jenkins → Manage Jenkins → Security, enable
+    <strong>Allow anonymous read access</strong>. This lets the dashboard call the Jenkins API
+    without login. Then click <strong>Load</strong> above.
+    <span style="float:right; cursor:pointer; color: var(--muted);" onclick="document.getElementById('cors-note').style.display='none'">✕</span>
+  </div>
+
+  <!-- LOADING BAR -->
+  <div class="loading-bar" id="loading-bar" style="display:none; margin-bottom:16px; border-radius:2px;"></div>
+
+  <!-- LAYOUT -->
+  <div class="layout">
+
+    <!-- SIDEBAR -->
+    <aside class="sidebar">
+      <div class="panel">
+        <div class="panel-header">
+          Build History
+          <span id="build-count" style="color: var(--text); font-size:12px;">—</span>
+        </div>
+        <div class="build-list" id="build-list">
+          <div class="empty-state">
+            <div class="icon">⬡</div>
+            Click Load to fetch builds
+          </div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-header">Artifacts</div>
+        <div id="artifact-list">
+          <div class="empty-state" style="padding: 24px;">
+            <div style="font-size: 20px; margin-bottom:8px;">◈</div>
+            No artifacts yet
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- MAIN -->
+    <main class="main">
+
+      <!-- Build header -->
+      <div class="panel build-header-card" id="build-header" style="display:none;">
+        <div class="build-status-badge status-UNKNOWN" id="status-badge">—</div>
+        <div class="build-meta-grid" id="build-meta-grid"></div>
+      </div>
+
+      <!-- Stages -->
+      <div class="panel" id="stages-panel" style="display:none;">
+        <div class="panel-header">Pipeline Stages</div>
+        <div style="padding:16px;">
+          <div class="stages-grid" id="stages-grid"></div>
+        </div>
+      </div>
+
+      <!-- Console -->
+      <div class="console-wrap">
+        <div class="console-toolbar">
+          <div class="console-dot cd-red"></div>
+          <div class="console-dot cd-yellow"></div>
+          <div class="console-dot cd-green"></div>
+          <span class="console-title" id="console-title">console output</span>
+          <button class="btn-ghost" style="padding:4px 10px; font-size:10px;" onclick="scrollLogBottom()">↓ bottom</button>
+        </div>
+        <pre id="log-output">Select a build or click Load to view logs.</pre>
+      </div>
+
+    </main>
+  </div>
+</div>
+
+<div id="error-toast"></div>
+
+<script>
+const state = {
+  jenkinsUrl: 'http://localhost:8080',
+  jobName: 'Social-Network-Pipeline',
+  currentBuild: null,
+  autoRefresh: false,
+  refreshTimer: null,
+};
+
+function getBase() {
+  return `${state.jenkinsUrl}/job/${encodeURIComponent(state.jobName)}`;
+}
+
+function showLoading(on) {
+  document.getElementById('loading-bar').style.display = on ? 'block' : 'none';
+}
+
+function showError(msg) {
+  const t = document.getElementById('error-toast');
+  t.textContent = msg;
+  t.style.display = 'block';
+  setTimeout(() => t.style.display = 'none', 5000);
+}
+
+async function apiFetch(path) {
+  const url = `${state.jenkinsUrl}${path}`;
+  const r = await fetch(url, { cache: 'no-store' });
+  if (!r.ok) throw new Error(`HTTP ${r.status} – ${url}`);
+  return r;
+}
+
+async function loadDashboard() {
+  state.jenkinsUrl = document.getElementById('jenkins-url').value.replace(/\/$/, '');
+  state.jobName = document.getElementById('job-name').value.trim();
+  document.getElementById('cors-note').style.display = 'none';
+  showLoading(true);
+  try {
+    await loadBuilds();
+    await loadBuildDetails('lastBuild');
+  } catch(e) {
+    showError(`Cannot reach Jenkins: ${e.message}. Make sure Jenkins is running and anonymous read is enabled.`);
+  } finally {
+    showLoading(false);
+  }
+}
+
+async function loadBuilds() {
+  const r = await apiFetch(`/job/${encodeURIComponent(state.jobName)}/api/json?tree=builds[number,result,duration,timestamp,displayName,description]`);
+  const data = await r.json();
+  const builds = (data.builds || []).slice(0, 25);
+  document.getElementById('build-count').textContent = builds.length;
+
+  const list = document.getElementById('build-list');
+  if (!builds.length) {
+    list.innerHTML = '<div class="empty-state"><div class="icon">○</div>No builds yet</div>';
+    return;
+  }
+
+  list.innerHTML = builds.map(b => {
+    const res = b.result || 'IN_PROGRESS';
+    const dotClass = res === 'SUCCESS' ? 'dot-success' : res === 'FAILURE' ? 'dot-fail' : res === 'IN_PROGRESS' ? 'dot-running' : 'dot-unknown';
+    const dur = b.duration ? formatDuration(b.duration) : '…';
+    const ts = b.timestamp ? new Date(b.timestamp).toLocaleString('en-IN', { month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' }) : '';
+    return `<div class="build-item" id="bitem-${b.number}" onclick="selectBuild(${b.number})">
+      <div class="build-dot ${dotClass}"></div>
+      <div class="build-info">
+        <div class="build-num">#${b.number} ${b.displayName !== '#'+b.number ? b.displayName : ''}</div>
+        <div class="build-meta">${ts}</div>
+      </div>
+      <div class="build-duration">${dur}</div>
+    </div>`;
+  }).join('');
+}
+
+async function selectBuild(num) {
+  document.querySelectorAll('.build-item').forEach(el => el.classList.remove('active'));
+  const el = document.getElementById(`bitem-${num}`);
+  if (el) el.classList.add('active');
+  state.currentBuild = num;
+  showLoading(true);
+  try {
+    await loadBuildDetails(num);
+  } catch(e) {
+    showError(e.message);
+  } finally {
+    showLoading(false);
+  }
+}
+
+async function loadBuildDetails(buildNum) {
+  const path = `/job/${encodeURIComponent(state.jobName)}/${buildNum}`;
+
+  // Build info
+  const infoR = await apiFetch(`${path}/api/json?tree=number,result,duration,timestamp,displayName,description,artifacts[fileName,relativePath,fileSize]`);
+  const info = await infoR.json();
+
+  // Console log
+  const logR = await apiFetch(`${path}/consoleText`);
+  const logText = await logR.text();
+
+  // Wfapi stages (may fail if not using workflow)
+  let stages = [];
+  try {
+    const wfR = await apiFetch(`${path}/wfapi/describe`);
+    const wf = await wfR.json();
+    stages = wf.stages || [];
+  } catch(_) {}
+
+  renderBuildHeader(info);
+  renderStages(stages, info.duration || 0);
+  renderLog(logText, info.number || buildNum);
+  renderArtifacts(info.artifacts || [], path);
+}
+
+function renderBuildHeader(info) {
+  const card = document.getElementById('build-header');
+  card.style.display = 'flex';
+  const res = info.result || 'IN_PROGRESS';
+  const badge = document.getElementById('status-badge');
+  badge.textContent = res === 'IN_PROGRESS' ? 'RUNNING' : res;
+  badge.className = `build-status-badge status-${res}`;
+
+  const ts = info.timestamp ? new Date(info.timestamp).toLocaleString('en-IN') : '—';
+  const dur = info.duration ? formatDuration(info.duration) : '…';
+
+  document.getElementById('build-meta-grid').innerHTML = `
+    <div class="meta-item"><label>Build</label><value>#${info.number}</value></div>
+    <div class="meta-item"><label>Result</label><value style="color:var(--${res === 'SUCCESS' ? 'success' : res === 'FAILURE' ? 'fail' : 'running'})">${res}</value></div>
+    <div class="meta-item"><label>Started</label><value>${ts}</value></div>
+    <div class="meta-item"><label>Duration</label><value>${dur}</value></div>
+    <div class="meta-item"><label>Job</label><value>${state.jobName}</value></div>
+  `;
+}
+
+function renderStages(stages, totalDuration) {
+  const panel = document.getElementById('stages-panel');
+  if (!stages.length) { panel.style.display = 'none'; return; }
+  panel.style.display = 'block';
+
+  const maxDur = Math.max(...stages.map(s => s.durationMillis || 0), 1);
+  document.getElementById('stages-grid').innerHTML = stages.map(s => {
+    const st = s.status || 'NOT_EXECUTED';
+    const pct = Math.round((s.durationMillis || 0) / maxDur * 100);
+    const dur = s.durationMillis ? formatDuration(s.durationMillis) : '—';
+    return `<div class="stage-card stage-${st}">
+      <div class="stage-name">${s.name}</div>
+      <div class="stage-status">${st} · ${dur}</div>
+      <div class="stage-bar-track"><div class="stage-bar-fill" style="width:${pct}%"></div></div>
+    </div>`;
+  }).join('');
+}
+
+function renderLog(text, buildNum) {
+  document.getElementById('console-title').textContent = `build #${buildNum} · console output`;
+  const colored = colorizeLog(text);
+  document.getElementById('log-output').innerHTML = colored;
+}
+
+function colorizeLog(text) {
+  return text
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .split('\n')
+    .map(line => {
+      if (/^\[Pipeline\].*stage/.test(line) || /^Running in stage/.test(line)) return `<span class="log-stage">${line}</span>`;
+      if (/FINISHED|SUCCESS|completed successfully|✅|🎉/.test(line)) return `<span class="log-success">${line}</span>`;
+      if (/ERROR|FAILED|error:|❌/.test(line)) return `<span class="log-error">${line}</span>`;
+      if (/WARN|warning:/.test(line)) return `<span class="log-warn">${line}</span>`;
+      if (/📥|📦|🧪|🔨|🚀|Pulling|Installing|Building|Starting/.test(line)) return `<span class="log-info">${line}</span>`;
+      if (/^\s*at /.test(line) || /^npm warn/.test(line)) return `<span class="log-dim">${line}</span>`;
+      return line;
+    }).join('\n');
+}
+
+function renderArtifacts(artifacts, buildPath) {
+  const container = document.getElementById('artifact-list');
+  if (!artifacts.length) {
+    container.innerHTML = `<div class="empty-state" style="padding:24px;"><div style="font-size:20px;margin-bottom:8px;">◈</div>No artifacts archived</div>`;
+    return;
+  }
+  container.innerHTML = `<div class="artifact-list">${artifacts.map(a => {
+    const url = `${state.jenkinsUrl}${buildPath}/artifact/${a.relativePath}`;
+    const icon = a.fileName.endsWith('.log') ? '📋' : a.fileName.endsWith('.json') ? '{}' : '📁';
+    const size = a.fileSize ? formatSize(a.fileSize) : '';
+    return `<a class="artifact-item" href="${url}" target="_blank">
+      <span class="artifact-icon">${icon}</span>
+      <span>${a.fileName}</span>
+      <span class="artifact-size">${size}</span>
+    </a>`;
+  }).join('')}</div>`;
+}
+
+function formatDuration(ms) {
+  if (ms < 1000) return `${ms}ms`;
+  const s = Math.floor(ms / 1000);
+  if (s < 60) return `${s}s`;
+  return `${Math.floor(s/60)}m ${s%60}s`;
+}
+
+function formatSize(bytes) {
+  if (bytes < 1024) return `${bytes}B`;
+  if (bytes < 1048576) return `${(bytes/1024).toFixed(1)}KB`;
+  return `${(bytes/1048576).toFixed(1)}MB`;
+}
+
+function scrollLogBottom() {
+  const el = document.getElementById('log-output');
+  el.scrollTop = el.scrollHeight;
+}
+
+function toggleAutoRefresh() {
+  state.autoRefresh = !state.autoRefresh;
+  const toggle = document.getElementById('refresh-toggle');
+  toggle.classList.toggle('active', state.autoRefresh);
+
+  if (state.autoRefresh) {
+    state.refreshTimer = setInterval(async () => {
+      try {
+        await loadBuilds();
+        if (state.currentBuild) await loadBuildDetails(state.currentBuild);
+        else await loadBuildDetails('lastBuild');
+      } catch(e) {}
+    }, 10000);
+  } else {
+    clearInterval(state.refreshTimer);
+  }
+}
+
+// Auto-load on page open
+window.addEventListener('load', () => {
+  // just wait for user to click Load
+});
+</script>
+</body>
+</html>
