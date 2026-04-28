@@ -56,15 +56,12 @@ pipeline {
     }
     post {
         always {
+            bat 'ping 127.0.0.1 -n 6 > nul'
             bat 'if exist C:\\Users\\Prajwal\\Desktop\\backend.log copy C:\\Users\\Prajwal\\Desktop\\backend.log backend.log'
             bat 'if exist C:\\Users\\Prajwal\\Desktop\\frontend.log copy C:\\Users\\Prajwal\\Desktop\\frontend.log frontend.log'
             archiveArtifacts artifacts: '*.log', allowEmptyArchive: true
         }
-        success {
-            echo '🎉 Pipeline completed successfully!'
-        }
-        failure {
-            echo '❌ Pipeline failed.'
-        }
+        success { echo '🎉 Pipeline completed successfully!' }
+        failure { echo '❌ Pipeline failed.' }
     }
 }
