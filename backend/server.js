@@ -1,5 +1,5 @@
 const express = require("express");
-const fs = require('fs');
+
 const cors = require("cors");
 const morgan = require('morgan');
 require("dotenv").config();
@@ -74,7 +74,5 @@ app.get("/api/debug/neo4j", async (req, res) => {
 
 // Single app.listen with startup log write
 app.listen(PORT, () => {
-  const msg = `[${new Date().toISOString()}] Server running on port ${PORT}\n`;
-  fs.appendFileSync(logFile, msg);
-  console.log(msg.trim());
+  console.log(`[${new Date().toISOString()}] Server running on port ${PORT}`);
 });
