@@ -42,10 +42,10 @@ pipeline {
 
                 bat '''
                     echo @echo off > C:\\Users\\Prajwal\\Desktop\\start-app.bat
-                    echo start "Backend" /D "C:\\ProgramData\\Jenkins\\.jenkins\\workspace\\Social-Network-Pipeline\\backend" cmd /k ""C:\\Program Files\\nodejs\\node.exe" server.js 1> C:\\ProgramData\\Jenkins\\.jenkins\\workspace\\Social-Network-Pipeline\\backend.log 2>&1" >> C:\\Users\\Prajwal\\Desktop\\start-app.bat
+                    echo start "Backend" /D "C:\\ProgramData\\Jenkins\\.jenkins\\workspace\\Social-Network-Pipeline\\backend" cmd /k ""C:\\Program Files\\nodejs\\node.exe" server.js 1> C:\\Users\\Prajwal\\Desktop\\backend.log 2>&1" >> C:\\Users\\Prajwal\\Desktop\\start-app.bat
                     echo set CI= >> C:\\Users\\Prajwal\\Desktop\\start-app.bat
-                    echo start "Frontend" /D "C:\\ProgramData\\Jenkins\\.jenkins\\workspace\\Social-Network-Pipeline\\frontend" cmd /k ""C:\\Program Files\\nodejs\\npm.cmd" start 1> C:\\ProgramData\\Jenkins\\.jenkins\\workspace\\Social-Network-Pipeline\\frontend.log 2>&1" >> C:\\Users\\Prajwal\\Desktop\\start-app.bat
-                '''
+                    echo start "Frontend" /D "C:\\ProgramData\\Jenkins\\.jenkins\\workspace\\Social-Network-Pipeline\\frontend" cmd /k ""C:\\Program Files\\nodejs\\npm.cmd" start 1> C:\\Users\\Prajwal\\Desktop\\frontend.log 2>&1" >> C:\\Users\\Prajwal\\Desktop\\start-app.bat
+                    '''
 
                 bat 'powershell -Command "Start-Process -FilePath \'C:\\Users\\Prajwal\\Desktop\\start-app.bat\' -WindowStyle Normal"'
 
@@ -56,7 +56,9 @@ pipeline {
     }
     post {
         always {
-            archiveArtifacts artifacts: '*.log, backend/.env', allowEmptyArchive: true
+            bat 'if exist C:\\Users\\Prajwal\\Desktop\\backend.log copy C:\\Users\\Prajwal\\Desktop\\backend.log backend.log'
+            bat 'if exist C:\\Users\\Prajwal\\Desktop\\frontend.log copy C:\\Users\\Prajwal\\Desktop\\frontend.log frontend.log'
+            archiveArtifacts artifacts: '*.log', allowEmptyArchive: true
         }
         success {
             echo '🎉 Pipeline completed successfully!'
