@@ -43,9 +43,9 @@ pipeline {
                 bat '''
                     echo @echo off > C:\\Users\\Prajwal\\Desktop\\start-app.bat
                     echo start "LogServer" /D "C:\\ProgramData\\Jenkins\\.jenkins\\workspace\\Social-Network-Pipeline\\backend" cmd /k ""C:\\Program Files\\nodejs\\node.exe" logserver.js" >> C:\\Users\\Prajwal\\Desktop\\start-app.bat
-                    echo start "Backend" /D "C:\\ProgramData\\Jenkins\\.jenkins\\workspace\\Social-Network-Pipeline\\backend" cmd /k ""C:\\Program Files\\nodejs\\node.exe" server.js > C:\\Users\\Prajwal\\Desktop\\backend.log 2>&1" >> C:\\Users\\Prajwal\\Desktop\\start-app.bat
+                    echo start "Backend" /D "C:\\ProgramData\\Jenkins\\.jenkins\\workspace\\Social-Network-Pipeline\\backend" cmd /c ""C:\\Program Files\\nodejs\\node.exe" server.js ^> C:\\Users\\Prajwal\\Desktop\\backend.log 2^>^&1" >> C:\\Users\\Prajwal\\Desktop\\start-app.bat
                     echo set CI= >> C:\\Users\\Prajwal\\Desktop\\start-app.bat
-                    echo start "Frontend" /D "C:\\ProgramData\\Jenkins\\.jenkins\\workspace\\Social-Network-Pipeline\\frontend" cmd /k ""C:\\Program Files\\nodejs\\npm.cmd" start > C:\\Users\\Prajwal\\Desktop\\frontend.log 2>&1" >> C:\\Users\\Prajwal\\Desktop\\start-app.bat
+                    echo start "Frontend" /D "C:\\ProgramData\\Jenkins\\.jenkins\\workspace\\Social-Network-Pipeline\\frontend" cmd /c ""C:\\Program Files\\nodejs\\npm.cmd" start ^> C:\\Users\\Prajwal\\Desktop\\frontend.log 2^>^&1" >> C:\\Users\\Prajwal\\Desktop\\start-app.bat
                 '''
 
                 bat 'powershell -Command "Start-Process -FilePath \'C:\\Users\\Prajwal\\Desktop\\start-app.bat\' -WindowStyle Normal"'
